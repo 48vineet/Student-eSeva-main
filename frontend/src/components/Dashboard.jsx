@@ -5,7 +5,7 @@ import {
   Pie,
   Cell,
   BarChart,
-  Bar,
+  Bar, 
   XAxis,
   YAxis,
   CartesianGrid,
