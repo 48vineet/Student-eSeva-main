@@ -5,7 +5,7 @@ import { getRiskBadgeClass } from "../utils/chartData";
 import { useStudents } from "../context/StudentContext";
 import StudentDetailsModal from "./StudentDetailsModal";
 
-const StudentTable = ({ students }) => {
+const StudentTable = ({ students, onStudentSelect, showActions = true, filterByAttendance = false, filterByGrades = false }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRisk, setFilterRisk] = useState("");
   const [sortBy, setSortBy] = useState("risk_level");
@@ -93,8 +93,12 @@ const StudentTable = ({ students }) => {
   };
 
   const handleStudentClick = (student) => {
-    setSelectedStudent(student);
-    setIsModalOpen(true);
+    if (onStudentSelect) {
+      onStudentSelect(student);
+    } else {
+      setSelectedStudent(student);
+      setIsModalOpen(true);
+    }
   };
 
   const handleCloseModal = () => {
@@ -344,33 +348,35 @@ const StudentTable = ({ students }) => {
                     {timeAgo(student.last_updated)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex justify-end space-x-2" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={() =>
-                          handleRecalculateRisk(student.student_id)
-                        }
-                        className="group relative p-2 text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 rounded-lg transition-all duration-200 transform hover:scale-110 hover:shadow-md"
-                        title="Recalculate Risk"
-                      >
-                        <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
-                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-                      </button>
-                      <button
-                        className="group relative p-2 text-green-600 hover:text-green-900 bg-green-50 hover:bg-green-100 rounded-lg transition-all duration-200 transform hover:scale-110 hover:shadow-md"
-                        title="Email Parent"
-                      >
-                        <Mail className="w-4 h-4 group-hover:animate-bounce" />
-                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-                      </button>
-                      <button
-                        onClick={() => handleStudentClick(student)}
-                        className="group relative p-2 text-purple-600 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 rounded-lg transition-all duration-200 transform hover:scale-110 hover:shadow-md"
-                        title="View Details"
-                      >
-                        <Eye className="w-4 h-4 group-hover:animate-pulse" />
-                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-purple-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-                      </button>
-                    </div>
+                    {showActions && (
+                      <div className="flex justify-end space-x-2" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={() =>
+                            handleRecalculateRisk(student.student_id)
+                          }
+                          className="group relative p-2 text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 rounded-lg transition-all duration-200 transform hover:scale-110 hover:shadow-md"
+                          title="Recalculate Risk"
+                        >
+                          <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
+                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+                        </button>
+                        <button
+                          className="group relative p-2 text-green-600 hover:text-green-900 bg-green-50 hover:bg-green-100 rounded-lg transition-all duration-200 transform hover:scale-110 hover:shadow-md"
+                          title="Email Parent"
+                        >
+                          <Mail className="w-4 h-4 group-hover:animate-bounce" />
+                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+                        </button>
+                        <button
+                          onClick={() => handleStudentClick(student)}
+                          className="group relative p-2 text-purple-600 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 rounded-lg transition-all duration-200 transform hover:scale-110 hover:shadow-md"
+                          title="View Details"
+                        >
+                          <Eye className="w-4 h-4 group-hover:animate-pulse" />
+                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-purple-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}

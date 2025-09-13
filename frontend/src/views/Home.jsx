@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import ModalUserMenu from "../components/ModalUserMenu";
 import {
   AlertTriangle,
   Upload,
@@ -30,6 +32,7 @@ import {
 const Home = () => {
   const [currentFeature, setCurrentFeature] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
+  const { isAuthenticated, user, logout } = useAuth();
 
   useEffect(() => {
     setIsVisible(true);
@@ -119,18 +122,40 @@ const Home = () => {
             <span className="text-2xl font-bold text-white">Student eSeva</span>
           </div>
           <div className="flex space-x-4">
-            <Link
-              to="/dashboard"
-              className="px-6 py-2 text-white/80 hover:text-white transition-colors duration-200"
-            >
-              Dashboard
-            </Link>
-            <Link
-              to="/settings"
-              className="px-6 py-2 text-white/80 hover:text-white transition-colors duration-200"
-            >
-              Settings
-            </Link>
+            {isAuthenticated ? (
+              <>
+                <Link
+                  to="/dashboard"
+                  className="px-6 py-2 text-white/80 hover:text-white transition-colors duration-200"
+                >
+                  Dashboard
+                </Link>
+                {user?.role === 'counselor' && (
+                  <Link
+                    to="/settings"
+                    className="px-6 py-2 text-white/80 hover:text-white transition-colors duration-200"
+                  >
+                    Settings
+                  </Link>
+                )}
+                <ModalUserMenu />
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  className="px-6 py-2 text-white/80 hover:text-white transition-colors duration-200"
+                >
+                  Login
+                </Link>
+                <Link
+                  to="/signup"
+                  className="px-6 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors duration-200"
+                >
+                  Sign Up
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </nav>

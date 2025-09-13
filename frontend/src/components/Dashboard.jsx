@@ -430,7 +430,7 @@ const Dashboard = () => {
 
       {/* Loading Overlay for Email Sending */}
       {sendingNotifications && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 flex items-center justify-center">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-custom z-40 flex items-center justify-center">
           <div className="bg-white rounded-2xl p-8 shadow-2xl max-w-md mx-4 animate-modal-in">
             <div className="text-center">
               <div className="mx-auto h-16 w-16 mb-4">

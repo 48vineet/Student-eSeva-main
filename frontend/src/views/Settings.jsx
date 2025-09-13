@@ -72,6 +72,11 @@ const Settings = () => {
     }
   }, [config]);
 
+  // Fetch config when component mounts
+  useEffect(() => {
+    fetchConfig();
+  }, []);
+
   // Check for changes
   useEffect(() => {
     if (config) {

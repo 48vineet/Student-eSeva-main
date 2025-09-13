@@ -28,10 +28,17 @@ export function ConfigProvider({ children }) {
   const fetchConfig = async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await api.getConfig();
       setConfig(response.config);
     } catch (err) {
-      setError(err.message);
+      // Handle CORS and network errors gracefully
+      if (err.message.includes('CORS') || err.message.includes('Network Error') || err.message.includes('Failed to fetch')) {
+        console.warn('Config API not available, using default configuration');
+        setError('Config service unavailable, using default settings');
+      } else {
+        setError(err.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -65,9 +72,11 @@ export function ConfigProvider({ children }) {
     }
   };
 
-  useEffect(() => {
-    fetchConfig();
-  }, []);
+  // Don't automatically fetch config on mount to avoid CORS issues
+  // Config will be fetched when needed by components
+  // useEffect(() => {
+  //   fetchConfig();
+  // }, []);
 
   return (
     <ConfigContext.Provider

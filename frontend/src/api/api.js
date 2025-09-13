@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 const ML_API_URL = import.meta.env.VITE_ML_API_URL || "http://localhost:5002";
 
 // Create axios instance with base configuration
@@ -12,10 +12,14 @@ const apiClient = axios.create({
   },
 });
 
-// Request interceptor
+// Request interceptor to add auth token
 apiClient.interceptors.request.use(
   (config) => {
-    console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    // Get token from localStorage
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
   },
   (error) => Promise.reject(error)
@@ -25,16 +29,19 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response.data,
   (error) => {
-    console.error("API Error:", error.response?.data || error.message);
+    // Don't log 403 errors as they're handled gracefully in components
+    if (error.response?.status !== 403) {
+      console.error("API Error:", error.response?.data || error.message);
+    }
     return Promise.reject(error);
   }
 );
 
 // API methods matching your backend routes
 export const api = {
-  // File upload - POST /api/upload
+  // File upload - POST /api/upload/exam-data
   uploadFile: (formData) =>
-    apiClient.post("/api/upload", formData, {
+    apiClient.post("/api/upload/exam-data", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
 

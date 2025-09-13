@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, User, Mail, Phone, Calendar, AlertTriangle, TrendingUp, BookOpen, DollarSign, Clock, CheckCircle, XCircle } from 'lucide-react';
 
-const StudentDetailsModal = ({ student, isOpen, onClose }) => {
+const StudentDetailsModal = ({ student, isOpen, onClose, showActions = true }) => {
   // Handle ESC key to close modal
   useEffect(() => {
     const handleEscKey = (event) => {
@@ -79,7 +79,7 @@ const StudentDetailsModal = ({ student, isOpen, onClose }) => {
     <div className="modal-overlay p-4">
       {/* Background Blur Overlay */}
       <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/50 backdrop-blur-custom"
         onClick={onClose}
       />
       
