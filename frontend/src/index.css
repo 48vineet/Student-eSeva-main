@@ -381,3 +381,143 @@
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
 }
+
+/* Navbar specific animations */
+@keyframes navbar-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dropdown-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes search-focus {
+  from {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+  to {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+}
+
+.animate-navbar-slide-down {
+  animation: navbar-slide-down 0.5s ease-out;
+}
+
+.animate-dropdown-fade-in {
+  animation: dropdown-fade-in 0.2s ease-out;
+}
+
+.animate-search-focus {
+  animation: search-focus 0.3s ease-out;
+}
+
+/* Navbar hover effects */
+.navbar-item {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.navbar-item:hover {
+  transform: translateY(-1px);
+}
+
+/* Notification badge animation */
+@keyframes notification-pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+.animate-notification-pulse {
+  animation: notification-pulse 2s infinite;
+}
+
+/* Theme toggle animation */
+@keyframes theme-toggle {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.1);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+.animate-theme-toggle {
+  animation: theme-toggle 0.6s ease-in-out;
+}
+
+/* Mobile menu slide animation */
+@keyframes mobile-menu-slide {
+  from {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-mobile-menu-slide {
+  animation: mobile-menu-slide 0.3s ease-out;
+}
+
+/* User avatar glow effect */
+@keyframes avatar-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+  }
+}
+
+.animate-avatar-glow {
+  animation: avatar-glow 2s infinite;
+}
+
+/* Smooth transitions for all interactive elements */
+.navbar-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Enhanced focus states */
+.navbar-focus:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+/* Loading state for refresh button */
+@keyframes refresh-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-refresh-spin {
+  animation: refresh-spin 1s linear infinite;
+}

@@ -1,20 +1,20 @@
 import React, { useState } from "react";
-import { Search, RefreshCw, Mail, Eye, Filter, Users } from "lucide-react";
+import { Search, RefreshCw, Filter, Users } from "lucide-react";
 import { formatDate, timeAgo } from "../utils/formatDate";
 import { getRiskBadgeClass } from "../utils/chartData";
 import { useStudents } from "../context/StudentContext";
-import StudentDetailsModal from "./StudentDetailsModal";
+import { useAuth } from "../context/AuthContext";
+import DeleteDataButton from "./DeleteDataButton";
 
-const StudentTable = ({ students, onStudentSelect, showActions = true, filterByAttendance = false, filterByGrades = false }) => {
+const StudentTable = ({ students, onStudentSelect, showActions = true, filterByAttendance = false, filterByGrades = false, onDeleteClick }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRisk, setFilterRisk] = useState("");
   const [sortBy, setSortBy] = useState("risk_level");
   const [sortOrder, setSortOrder] = useState("desc");
   const [currentPage, setCurrentPage] = useState(1);
   const [studentsPerPage] = useState(10);
-  const [selectedStudent, setSelectedStudent] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const { actions } = useStudents();
+  const { user } = useAuth();
 
   // Filter and search students
   const filteredStudents = (students || []).filter((student) => {
@@ -92,19 +92,7 @@ const StudentTable = ({ students, onStudentSelect, showActions = true, filterByA
     }
   };
 
-  const handleStudentClick = (student) => {
-    if (onStudentSelect) {
-      onStudentSelect(student);
-    } else {
-      setSelectedStudent(student);
-      setIsModalOpen(true);
-    }
-  };
 
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setSelectedStudent(null);
-  };
 
   const getRiskBadge = (riskLevel) => {
     const baseClasses =
@@ -240,9 +228,8 @@ const StudentTable = ({ students, onStudentSelect, showActions = true, filterByA
               {currentStudents.map((student, index) => (
                 <tr 
                   key={student.student_id} 
-                  className="group hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 transform hover:scale-[1.01] animate-fade-in-up cursor-pointer"
+                  className="group hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 transform hover:scale-[1.01] animate-fade-in-up"
                   style={{animationDelay: `${index * 0.1}s`}}
-                  onClick={() => handleStudentClick(student)}
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
@@ -360,21 +347,15 @@ const StudentTable = ({ students, onStudentSelect, showActions = true, filterByA
                           <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
                           <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
                         </button>
-                        <button
-                          className="group relative p-2 text-green-600 hover:text-green-900 bg-green-50 hover:bg-green-100 rounded-lg transition-all duration-200 transform hover:scale-110 hover:shadow-md"
-                          title="Email Parent"
-                        >
-                          <Mail className="w-4 h-4 group-hover:animate-bounce" />
-                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-                        </button>
-                        <button
-                          onClick={() => handleStudentClick(student)}
-                          className="group relative p-2 text-purple-600 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 rounded-lg transition-all duration-200 transform hover:scale-110 hover:shadow-md"
-                          title="View Details"
-                        >
-                          <Eye className="w-4 h-4 group-hover:animate-pulse" />
-                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-purple-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-                        </button>
+                         {/* Delete Data Button - Only show for roles that can delete data */}
+                         {user && ['exam-department', 'faculty', 'local-guardian', 'counselor'].includes(user.role) && (
+                           <DeleteDataButton
+                             student={student}
+                             role={user.role}
+                             onSuccess={() => actions.refreshData()}
+                             onDeleteClick={onDeleteClick}
+                           />
+                         )}
                       </div>
                     )}
                   </td>
@@ -481,12 +462,6 @@ const StudentTable = ({ students, onStudentSelect, showActions = true, filterByA
         </div>
       )}
 
-      {/* Student Details Modal */}
-      <StudentDetailsModal
-        student={selectedStudent}
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-      />
     </div>
   );
 };

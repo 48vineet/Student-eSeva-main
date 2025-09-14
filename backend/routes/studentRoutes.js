@@ -7,7 +7,13 @@ const {
   createAction,
   updateAction,
   getActions,
+  deleteExamData,
+  deleteAttendanceData,
+  deleteFeesData,
+  deleteStudentRecord,
+  deleteAllStudentRecords,
 } = require("../controllers/studentController");
+const { cleanupDuplicateStudents } = require("../controllers/uploadController");
 const { 
   authenticate, 
   authorize, 
@@ -29,6 +35,31 @@ router.post("/:studentId/recalculate", authorize(["counselor", "faculty", "exam-
 // Action management routes
 router.post("/:studentId/actions", authorizeActionManagement, createAction);
 router.put("/:studentId/actions/:actionId", authorizeActionManagement, updateAction);
-router.get("/:studentId/actions", authorizeActionManagement, getActions);
+router.get("/:studentId/actions", authorizeStudentData, getActions);
+
+// Data deletion routes (role-specific)
+router.delete("/:studentId/exam-data", authenticate, deleteExamData);
+router.delete("/:studentId/attendance-data", authenticate, deleteAttendanceData);
+router.delete("/:studentId/fees-data", authenticate, deleteFeesData);
+
+// Delete ALL student records (counselor and exam-department)
+router.delete("/", authorize(["counselor", "exam-department"]), deleteAllStudentRecords);
+
+// Complete student record deletion (counselor only)
+router.delete("/:studentId", authorize(["counselor"]), deleteStudentRecord);
+
+// Cleanup duplicate students (counselor only)
+router.post("/cleanup-duplicates", authorize(["counselor"]), async (req, res, next) => {
+  try {
+    const deletedCount = await cleanupDuplicateStudents();
+    res.json({
+      success: true,
+      message: `Cleaned up ${deletedCount} duplicate student records`,
+      deletedCount
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 module.exports = router;

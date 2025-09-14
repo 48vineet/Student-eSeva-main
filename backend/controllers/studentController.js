@@ -34,8 +34,8 @@ async function getStudents(req, res, next) {
     students = students.map(student => {
       const filteredStudent = { ...student };
       
-      // Only Faculty, Counselor, and Local Guardian can see risk assessment
-      if (!["faculty", "counselor", "local-guardian"].includes(role)) {
+      // Only Faculty, Counselor, Local Guardian, and Exam Department can see risk assessment
+      if (!["faculty", "counselor", "local-guardian", "exam-department"].includes(role)) {
         // Remove risk assessment data for students and parents
         delete filteredStudent.risk_level;
         delete filteredStudent.risk_score;
@@ -72,6 +72,17 @@ async function getStudentById(req, res, next) {
     const student = await Student.findOne({ student_id: studentId }).lean();
     if (!student)
       return res.status(404).json({ success: false, error: "Not found" });
+    
+    console.log('getStudentById - student data:', {
+      risk_level: student.risk_level,
+      risk_score: student.risk_score,
+      risk_factors: student.risk_factors,
+      explanation: student.explanation,
+      recommendations: student.recommendations
+    });
+    
+    console.log('getStudentById - full student object keys:', Object.keys(student));
+    
     res.json({ success: true, student });
   } catch (err) {
     next(err);
@@ -85,8 +96,8 @@ async function dashboardSummary(req, res, next) {
   try {
     const { role } = req.user;
     
-    // Only Faculty, Counselor, and Local Guardian can see risk assessment summary
-    if (!["faculty", "counselor", "local-guardian"].includes(role)) {
+    // Only Faculty, Counselor, Local Guardian, and Exam Department can see risk assessment summary
+    if (!["faculty", "counselor", "local-guardian", "exam-department"].includes(role)) {
       // For students and parents, return basic summary without risk data
       const totalStudents = await Student.countDocuments();
       const avgAttendance = await Student.aggregate([
@@ -214,13 +225,13 @@ async function recalculateRisk(req, res, next) {
       console.error(`ML recalculation failed for ${data.student_id}:`, error.message);
       console.error(`ML recalculation error details:`, error);
       // Use rule-based as fallback
-      mlResult = { risk_level: baseRisk.risk_level, risk_score: baseRisk.score };
+      mlResult = { risk_level: baseRisk.risk_level, risk_score: baseRisk.risk_score };
     }
 
     // Combine ML and rule-based results
     const finalRisk = {
       risk_level: mlResult.risk_level || baseRisk.risk_level,
-      risk_score: mlResult.risk_score || baseRisk.score,
+      risk_score: mlResult.risk_score || baseRisk.risk_score,
       risk_factors: baseRisk.risk_factors,
       explanation: baseRisk.explanation,
       recommendations: baseRisk.recommendations,
@@ -229,13 +240,17 @@ async function recalculateRisk(req, res, next) {
     console.log(`Final recalculated risk for ${data.student_id}:`, finalRisk);
 
     // Update student with new risk data
+    console.log(`Updating student ${data.student_id} with risk data:`, finalRisk);
     student.risk_level = finalRisk.risk_level;
     student.risk_score = finalRisk.risk_score;
     student.risk_factors = finalRisk.risk_factors;
     student.explanation = finalRisk.explanation;
     student.recommendations = finalRisk.recommendations;
     student.last_updated = new Date();
+    
+    console.log(`Student before save - risk_score: ${student.risk_score}`);
     await student.save();
+    console.log(`Student after save - risk_score: ${student.risk_score}`);
 
     res.json({ success: true, student });
   } catch (err) {
@@ -402,6 +417,293 @@ async function getActions(req, res, next) {
   }
 }
 
+/**
+ * Delete exam data for a student (Exam Department only)
+ */
+async function deleteExamData(req, res, next) {
+  try {
+    const { studentId } = req.params;
+    const { role } = req.user;
+
+    // Only exam department can delete exam data
+    if (role !== "exam-department") {
+      return res.status(403).json({
+        success: false,
+        error: "Only exam department can delete exam data"
+      });
+    }
+
+    const student = await Student.findOne({ student_id: studentId });
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        error: "Student not found"
+      });
+    }
+
+    // Clear exam-related data
+    student.grades = [];
+    student.unit_test_1_grades = [];
+    student.unit_test_2_grades = [];
+    student.mid_sem_grades = [];
+    student.end_sem_grades = [];
+    student.academic_history = [];
+    
+    // Reset data completion status
+    student.data_completion.exam_department = false;
+    student.data_completion.last_updated = new Date();
+    
+    // Reset overall completion status
+    student.data_complete = false;
+    
+    // Reset risk assessment since exam data is removed
+    student.risk_level = "pending";
+    student.risk_score = 0;
+    student.risk_factors = [];
+    student.explanation = [];
+    student.recommendations = [];
+    
+    student.last_updated = new Date();
+    await student.save();
+
+    res.json({
+      success: true,
+      message: "Exam data deleted successfully",
+      student: {
+        student_id: student.student_id,
+        name: student.name,
+        data_completion: student.data_completion,
+        data_complete: student.data_complete
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Delete attendance data for a student (Faculty only)
+ */
+async function deleteAttendanceData(req, res, next) {
+  try {
+    const { studentId } = req.params;
+    const { role } = req.user;
+
+    // Only faculty can delete attendance data
+    if (role !== "faculty") {
+      return res.status(403).json({
+        success: false,
+        error: "Only faculty can delete attendance data"
+      });
+    }
+
+    const student = await Student.findOne({ student_id: studentId });
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        error: "Student not found"
+      });
+    }
+
+    // Clear attendance data
+    student.attendance_rate = 0;
+    
+    // Reset data completion status
+    student.data_completion.faculty = false;
+    student.data_completion.last_updated = new Date();
+    
+    // Reset overall completion status
+    student.data_complete = false;
+    
+    // Reset risk assessment since attendance data is removed
+    student.risk_level = "pending";
+    student.risk_score = 0;
+    student.risk_factors = [];
+    student.explanation = [];
+    student.recommendations = [];
+    
+    student.last_updated = new Date();
+    await student.save();
+
+    res.json({
+      success: true,
+      message: "Attendance data deleted successfully",
+      student: {
+        student_id: student.student_id,
+        name: student.name,
+        data_completion: student.data_completion,
+        data_complete: student.data_complete
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Delete fees data for a student (Local Guardian only)
+ */
+async function deleteFeesData(req, res, next) {
+  try {
+    const { studentId } = req.params;
+    const { role } = req.user;
+
+    // Only local guardian can delete fees data
+    if (role !== "local-guardian") {
+      return res.status(403).json({
+        success: false,
+        error: "Only local guardian can delete fees data"
+      });
+    }
+
+    const student = await Student.findOne({ student_id: studentId });
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        error: "Student not found"
+      });
+    }
+
+    // Clear fees-related data
+    student.fees_status = "Pending";
+    student.amount_paid = 0;
+    student.amount_due = 0;
+    student.due_date = "";
+    student.days_overdue = 0;
+    
+    // Reset data completion status
+    student.data_completion.local_guardian = false;
+    student.data_completion.last_updated = new Date();
+    
+    // Reset overall completion status
+    student.data_complete = false;
+    
+    // Reset risk assessment since fees data is removed
+    student.risk_level = "pending";
+    student.risk_score = 0;
+    student.risk_factors = [];
+    student.explanation = [];
+    student.recommendations = [];
+    
+    student.last_updated = new Date();
+    await student.save();
+
+    res.json({
+      success: true,
+      message: "Fees data deleted successfully",
+      student: {
+        student_id: student.student_id,
+        name: student.name,
+        data_completion: student.data_completion,
+        data_complete: student.data_complete
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Delete entire student record - Only accessible by counselors
+ */
+async function deleteStudentRecord(req, res, next) {
+  try {
+    const { studentId } = req.params;
+    const { role } = req.user;
+
+    // Only counselors can delete entire student records
+    if (role !== "counselor") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Only counselors can delete entire student records."
+      });
+    }
+
+    // Find the student
+    const student = await Student.findOne({ student_id: studentId });
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: "Student not found"
+      });
+    }
+
+    // Store student info for response before deletion
+    const deletedStudentInfo = {
+      student_id: student.student_id,
+      name: student.name,
+      email: student.email
+    };
+
+    // Delete the entire student record
+    await Student.deleteOne({ student_id: studentId });
+
+    res.json({
+      success: true,
+      message: "Student record deleted successfully",
+      deletedStudent: deletedStudentInfo
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Delete ALL student records - Only accessible by counselors
+ */
+async function deleteAllStudentRecords(req, res, next) {
+  try {
+    const { role } = req.user;
+
+    // Only counselors can delete all student records
+    if (role !== "counselor") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Only counselors can delete all student records."
+      });
+    }
+
+    // Get count of students before deletion
+    const studentCount = await Student.countDocuments();
+
+    if (studentCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No students found to delete"
+      });
+    }
+
+    // Delete all student records
+    const result = await Student.deleteMany({});
+
+    res.json({
+      success: true,
+      message: `Successfully deleted ${result.deletedCount} student records`,
+      deletedCount: result.deletedCount
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Delete ALL student records from the database
+ * Only accessible by counselors and exam-department
+ */
+async function deleteAllStudentRecords(req, res, next) {
+  try {
+    const result = await Student.deleteMany({});
+    
+    res.json({
+      success: true,
+      message: `Successfully deleted ${result.deletedCount || 0} student records`,
+      deletedCount: result.deletedCount || 0
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getStudents,
   getStudentById,
@@ -410,4 +712,9 @@ module.exports = {
   createAction,
   updateAction,
   getActions,
+  deleteExamData,
+  deleteAttendanceData,
+  deleteFeesData,
+  deleteStudentRecord,
+  deleteAllStudentRecords,
 };

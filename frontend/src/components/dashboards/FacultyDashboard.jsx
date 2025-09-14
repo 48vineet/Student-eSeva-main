@@ -4,11 +4,30 @@ import { useAuth } from '../../context/AuthContext';
 import { useStudents } from '../../context/StudentContext';
 import { api } from '../../api/api';
 import StudentTable from '../StudentTable';
-import AttendanceUpload from '../AttendanceUpload';
+import StudentDataUpload from '../StudentDataUpload';
 import StudentDetailsModal from '../StudentDetailsModal';
-import ModalUserMenu from '../ModalUserMenu';
+import DeleteDataModal from '../DeleteDataModal';
+import EmailAlerts from '../EmailAlerts';
+import Navbar from '../Navbar';
 import {
-  Upload,
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar, 
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
+import {
+  preparePieChartData,
+  prepareAttendanceData,
+} from "../../utils/chartData";
+import {
+  Mail,
   Users,
   TrendingUp,
   AlertTriangle,
@@ -25,27 +44,34 @@ import {
   Zap,
   Shield,
   ArrowRight,
-  Plus,
   Settings,
   Bell,
   Activity,
+  X,
   UserCheck,
   Clock,
-  FileText
+  FileText,
+  Trash2
 } from 'lucide-react';
 
 const FacultyDashboard = () => {
   const { user } = useAuth();
-  const { students, loading, error, summary, actions } = useStudents();
+  const { state, actions } = useStudents();
+  const { students, loading, error, summary } = state;
   const { refreshData } = actions;
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const [showUpload, setShowUpload] = useState(false);
+  const [showStudentDataUpload, setShowStudentDataUpload] = useState(false);
+  const [showEmailAlerts, setShowEmailAlerts] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRisk, setFilterRisk] = useState('all');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteModalStudent, setDeleteModalStudent] = useState(null);
   const [localStudents, setLocalStudents] = useState([]);
   const [localLoading, setLocalLoading] = useState(false);
   const hasMountedRef = useRef(false);
+
+  // Chart data preparation will be done after data loading
 
   // Direct data fetching function
   const fetchStudentsDirect = useCallback(async () => {
@@ -85,14 +111,90 @@ const FacultyDashboard = () => {
     await refreshData();
   };
 
+  const handleDeleteAllAttendanceData = async () => {
+    if (!confirm('Are you sure you want to delete ALL attendance data for ALL students? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      // Get all students first
+      const allStudents = localStudents.length > 0 ? localStudents : (students || []);
+      
+      if (allStudents.length === 0) {
+        alert('No students found to delete data from.');
+        return;
+      }
+
+      // Delete attendance data for each student
+      const deletePromises = allStudents.map(student => 
+        api.deleteAttendanceData(student.student_id)
+      );
+
+      await Promise.all(deletePromises);
+      
+      alert(`Successfully deleted attendance data for ${allStudents.length} students.`);
+      
+      // Refresh the data
+      await fetchStudentsDirect();
+      await refreshData();
+    } catch (error) {
+      console.error('Error deleting all attendance data:', error);
+      alert('Error occurred while deleting attendance data. Please try again.');
+    }
+  };
+
+  // Handle individual student delete modal
+  const handleDeleteStudentAttendanceData = (student) => {
+    setDeleteModalStudent(student);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteModalStudent) return;
+    
+    try {
+      await api.deleteAttendanceData(deleteModalStudent.student_id);
+      setShowDeleteModal(false);
+      setDeleteModalStudent(null);
+      await fetchStudentsDirect();
+      await refreshData();
+    } catch (error) {
+      console.error('Error deleting attendance data:', error);
+      alert('Error occurred while deleting attendance data. Please try again.');
+    }
+  };
+
   const onUploadSuccess = () => {
     fetchStudentsDirect();
     refreshData();
   };
 
+
+  const handleShowEmailAlerts = () => {
+    setShowEmailAlerts(true);
+  };
+
+  const handleCloseEmailAlerts = () => {
+    setShowEmailAlerts(false);
+  };
+
+  const handleShowStudentDataUpload = () => {
+    setShowStudentDataUpload(true);
+  };
+
+  const handleCloseStudentDataUpload = () => {
+    console.log('Closing StudentDataUpload modal');
+    setShowStudentDataUpload(false);
+  };
+
   // Use local students as fallback if context students is undefined
   const displayStudents = students || localStudents;
   const displayLoading = loading || localLoading;
+
+  // Chart data preparation
+  const safeSummary = summary || { total: 0, high: 0, medium: 0, low: 0 };
+  const pieData = preparePieChartData(safeSummary);
+  const attendanceData = prepareAttendanceData(displayStudents || []);
 
   // Filter students based on search and risk level
   const filteredStudents = displayStudents?.filter(student => {
@@ -129,48 +231,34 @@ const FacultyDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      {/* Header */}
-      <div className="bg-white/80 backdrop-blur-sm shadow-lg border-b border-white/20">
-        <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center">
-            <Link to="/" className="group">
-              <div className="flex items-center space-x-4">
-                <div className="p-3 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-105">
-                  <UserCheck className="w-8 h-8 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent group-hover:from-blue-700 group-hover:to-indigo-700 transition-all duration-300">
-                    Faculty Dashboard
-                  </h1>
-                  <p className="text-gray-700 mt-1">
-                    Welcome back, <span className="font-semibold text-gray-900">{user.username}</span>
-                  </p>
-                  <p className="text-sm text-gray-500">Department: {user.department}</p>
-                </div>
-              </div>
-            </Link>
-            <div className="flex items-center space-x-4 animate-fade-in-up">
+      {/* Modern Navbar */}
+      <Navbar
+        title="Faculty Dashboard"
+        subtitle={`Welcome back, ${user.username}`}
+        icon={UserCheck}
+        onRefresh={handleRefresh}
+        isLoading={displayLoading}
+        additionalActions={
+          <div className="flex space-x-3">
+            {user?.role === 'faculty' && (
               <button
-                onClick={handleRefresh}
-                className="group flex items-center space-x-2 px-3 py-2 text-gray-700 bg-white hover:bg-gray-100 rounded-lg text-sm font-medium transition-all duration-300 transform hover:scale-105 border border-gray-200 shadow-md hover:shadow-lg"
+                onClick={handleShowEmailAlerts}
+                className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
               >
-                <RefreshCw className={`w-4 h-4 group-hover:rotate-180 transition-transform duration-500 ${displayLoading ? 'animate-spin' : ''}`} />
-                <span>Refresh</span>
+                <Mail className="w-4 h-4" />
+                <span className="hidden sm:inline">Email Alerts</span>
               </button>
-              <div className="flex items-center space-x-3 bg-white rounded-xl px-4 py-2 border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-md ring-2 ring-white/50">
-                  <span className="text-white font-bold text-sm">{user.username?.charAt(0)?.toUpperCase() || 'F'}</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-black font-semibold text-sm">{user.username}</span>
-                  <span className="text-gray-600 text-xs capitalize">{user.role?.replace('-', ' ')}</span>
-                </div>
-                <ModalUserMenu />
-              </div>
-            </div>
+            )}
+            <button
+              onClick={handleShowStudentDataUpload}
+              className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+            >
+              <UserCheck className="w-4 h-4" />
+              <span className="hidden sm:inline">Upload Student Data</span>
+            </button>
           </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -257,6 +345,117 @@ const FacultyDashboard = () => {
           </div>
         </div>
 
+        {/* Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          <div className="group bg-white/80 backdrop-blur-sm rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  Risk Distribution
+                </h3>
+                <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+              </div>
+              <div className="h-64">
+                {pieData && pieData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={pieData}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                        label={({ name, value }) => `${name}: ${value}`}
+                        animationBegin={0}
+                        animationDuration={1000}
+                      >
+                        {pieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        contentStyle={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                          border: 'none',
+                          borderRadius: '12px',
+                          boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)'
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center">
+                      <PieChart className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                      <p className="text-gray-500 text-sm">No risk assessment data available</p>
+                      <p className="text-gray-400 text-xs">Complete risk assessment to see the chart</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="group bg-white/80 backdrop-blur-sm rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+                  Attendance Distribution
+                </h3>
+                <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+              </div>
+              <div className="h-64">
+                {attendanceData && attendanceData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={attendanceData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis 
+                        dataKey="range" 
+                        tick={{ fontSize: 12 }}
+                        axisLine={{ stroke: '#6b7280' }}
+                      />
+                      <YAxis 
+                        tick={{ fontSize: 12 }}
+                        axisLine={{ stroke: '#6b7280' }}
+                      />
+                      <Tooltip 
+                        contentStyle={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                          border: 'none',
+                          borderRadius: '12px',
+                          boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)'
+                        }}
+                      />
+                      <Bar 
+                        dataKey="count" 
+                        fill="url(#colorGradient)"
+                        radius={[4, 4, 0, 0]}
+                        animationBegin={0}
+                        animationDuration={1000}
+                      />
+                      <defs>
+                        <linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#3b82f6" />
+                          <stop offset="100%" stopColor="#1d4ed8" />
+                        </linearGradient>
+                      </defs>
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center">
+                      <BarChart3 className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                      <p className="text-gray-500 text-sm">No attendance data available</p>
+                      <p className="text-gray-400 text-xs">Upload attendance data to see the chart</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Workflow Information */}
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 mb-8 animate-fade-in-up" style={{animationDelay: '0.4s'}}>
           <div className="flex items-start space-x-4">
@@ -275,35 +474,7 @@ const FacultyDashboard = () => {
           </div>
         </div>
 
-        {/* Attendance Upload Section */}
-        <div className="mb-8 animate-fade-in-up" style={{animationDelay: '0.5s'}}>
-          <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-white/20 p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Upload className="w-6 h-6 text-blue-600" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">Upload Attendance Data</h2>
-                  <p className="text-sm text-gray-600">Add attendance records for students</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowUpload(!showUpload)}
-                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
-              >
-                <Plus className="w-4 h-4" />
-                <span>{showUpload ? 'Hide Upload' : 'Show Upload'}</span>
-              </button>
-            </div>
-            
-            {showUpload && (
-              <div className="border-t border-gray-200 pt-6">
-                <AttendanceUpload onUploadSuccess={onUploadSuccess} />
-              </div>
-            )}
-          </div>
-        </div>
+
 
         {/* Search and Filter */}
         <div className="mb-6 animate-fade-in-up" style={{animationDelay: '0.6s'}}>
@@ -379,12 +550,24 @@ const FacultyDashboard = () => {
                 <StudentTable 
                   students={filteredStudents} 
                   onStudentSelect={handleStudentSelect}
-                  showActions={false}
+                  showActions={true}
                   filterByAttendance={true}
+                  onDeleteClick={handleDeleteStudentAttendanceData}
                 />
               )}
             </div>
           </div>
+        </div>
+
+        {/* Delete All Attendance Data Button */}
+        <div className="mt-6 flex justify-center">
+          <button
+            onClick={() => handleDeleteAllAttendanceData()}
+            className="group relative inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white text-sm font-medium rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            <span>Delete All Attendance Data</span>
+          </button>
         </div>
       </div>
 
@@ -393,8 +576,67 @@ const FacultyDashboard = () => {
         <StudentDetailsModal
           student={selectedStudent}
           onClose={handleCloseModal}
-          showActions={false}
+          showActions={true}
         />
+      )}
+
+
+      {showStudentDataUpload && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-2xl font-bold text-gray-900">Upload Student Data with Emails</h2>
+              <button
+                onClick={handleCloseStudentDataUpload}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-6 h-6 text-gray-500" />
+              </button>
+            </div>
+            <div className="p-6">
+              <StudentDataUpload
+                onUploadSuccess={() => {
+                  console.log('StudentDataUpload success callback received');
+                  handleRefresh();
+                  handleCloseStudentDataUpload();
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Data Modal */}
+      {showDeleteModal && deleteModalStudent && (
+        <DeleteDataModal
+          isOpen={showDeleteModal}
+          onClose={() => {
+            setShowDeleteModal(false);
+            setDeleteModalStudent(null);
+          }}
+          onConfirm={handleDeleteConfirm}
+          student={deleteModalStudent}
+          dataType="attendance"
+          role="faculty"
+        />
+      )}
+
+      {/* Email Alerts Modal */}
+      {showEmailAlerts && user?.role === 'faculty' && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-4 mx-auto p-5 border w-11/12 max-w-6xl shadow-lg rounded-md bg-white">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-gray-900">Email Alerts</h2>
+              <button
+                onClick={handleCloseEmailAlerts}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            <EmailAlerts />
+          </div>
+        </div>
       )}
     </div>
   );

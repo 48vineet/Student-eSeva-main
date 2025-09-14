@@ -3,6 +3,7 @@ const Student = require("../models/Student");
 const riskCalculator = require("../services/riskCalculator");
 const { predictRisk } = require("../services/mlService");
 const Config = require("../models/Config");
+const { sendStudentNotificationEmail, sendParentNotificationEmail } = require("../services/emailService");
 
 /**
  * Handle file upload with role-based data processing
@@ -29,6 +30,10 @@ async function uploadController(req, res, next) {
 
     // Role-based processing
     if (role === "faculty") {
+      // Check if this is a student data upload with emails
+      if (req.body.type === "student-data") {
+        return await processStudentDataUpload(req, res, next);
+      }
       return await processAttendanceUpload(req, res, next);
     } else if (role === "exam-department") {
       return await processExamDataUpload(req, res, next);
@@ -43,6 +48,143 @@ async function uploadController(req, res, next) {
       });
     }
   } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Process student data upload (Faculty only) - Creates students with emails and sends notifications
+ */
+async function processStudentDataUpload(req, res, next) {
+  try {
+    console.log("Processing student data upload with emails...");
+    
+    const rows = await parseFile(req.file.buffer, req.file.originalname);
+    const createdStudents = [];
+    let emailCount = 0;
+
+    for (const row of rows) {
+      if (!row["Student ID"] && !row["student_id"]) {
+        continue;
+      }
+
+      const student_id = extractTextValue(row["Student ID"] || row["student_id"]);
+      const name = extractTextValue(row["Student Name"] || row["name"]);
+      const attendance_rate = parseAttendanceRate(
+        extractTextValue(row["Attendance Rate"] || row["attendance_rate"] || row["Attendance"] || row["attendance"] || row["Attendance %"]) || 0
+      );
+      const email = extractTextValue(row["Student Email"] || row["email"]);
+      const parent_email = extractTextValue(row["Parent Email"] || row["parent_email"]);
+
+      if (student_id && name && email && parent_email) {
+        // Use upsert to update existing student or create new one
+        const studentData = {
+          student_id,
+          name,
+          email,
+          parent_email,
+          attendance_rate,
+          fee_status: "pending",
+          days_overdue: 0,
+          grades: [],
+          risk_level: "pending",
+          risk_score: 0,
+          risk_factors: [],
+          explanation: [],
+          recommendations: [],
+          data_completion: {
+            exam_department: false,
+            faculty: true, // Faculty data is provided
+            local_guardian: false,
+            last_updated: new Date()
+          },
+          data_complete: false,
+          last_updated: new Date()
+        };
+
+        const student = await Student.findOneAndUpdate(
+          { student_id },
+          studentData,
+          { upsert: true, new: true, runValidators: true }
+        );
+        
+        // Calculate risk assessment for the student
+        try {
+          console.log(`Calculating risk for student ${student_id} (student data upload):`, {
+            attendance_rate: student.attendance_rate,
+            fee_status: student.fee_status,
+            days_overdue: student.days_overdue,
+            hasGrades: student.grades && student.grades.length > 0,
+            data_completion: student.data_completion
+          });
+          
+          const riskAssessment = await riskCalculator.calculateRisk(student);
+          if (riskAssessment) {
+            student.risk_level = riskAssessment.risk_level;
+            student.risk_score = riskAssessment.risk_score;
+            student.risk_factors = riskAssessment.risk_factors;
+            student.explanation = riskAssessment.explanation;
+            student.recommendations = riskAssessment.recommendations;
+            await student.save();
+            
+            console.log(`Risk calculated for ${student_id} (student data upload):`, {
+              risk_level: riskAssessment.risk_level,
+              risk_score: riskAssessment.risk_score,
+              factors: riskAssessment.risk_factors
+            });
+          }
+        } catch (riskError) {
+          console.error(`Failed to calculate risk for student ${student_id}:`, riskError);
+          // Continue processing even if risk calculation fails
+        }
+        
+        createdStudents.push(student);
+
+        // Only send emails if explicitly requested via send_emails parameter
+        const sendEmails = req.body.send_emails === 'true' || req.body.send_emails === true;
+        
+        if (sendEmails) {
+          try {
+            // Send email to student
+            await sendStudentNotificationEmail({
+              studentEmail: email,
+              studentName: name,
+              studentId: student_id,
+              attendanceRate: attendance_rate,
+              message: `Your attendance rate is ${attendance_rate}%. Please review the actions taken by the faculty.`
+            });
+            emailCount++;
+
+            // Send email to parent
+            await sendParentNotificationEmail({
+              parentEmail: parent_email,
+              studentName: name,
+              studentId: student_id,
+              attendanceRate: attendance_rate,
+              message: `Your child ${name}'s attendance rate is ${attendance_rate}%. Please review and take necessary action.`
+            });
+            emailCount++;
+
+          } catch (emailError) {
+            console.error(`Failed to send emails for student ${student_id}:`, emailError);
+            // Continue processing other students even if email fails
+          }
+        }
+      }
+    }
+
+    const emailStatus = req.body.send_emails === 'true' || req.body.send_emails === true ? 
+      ` and sent emails to ${emailCount} recipients` : ' (emails not sent)';
+    
+    res.json({
+      success: true,
+      message: `Student data uploaded successfully${emailStatus}`,
+      createdCount: createdStudents.length,
+      emailCount: emailCount,
+      emailsSent: req.body.send_emails === 'true' || req.body.send_emails === true
+    });
+  } catch (error) {
+    console.error("Error in processStudentDataUpload:", error);
     next(error);
   }
 }
@@ -81,11 +223,33 @@ async function processAttendanceUpload(req, res, next) {
                                  student.data_completion.faculty && 
                                  student.data_completion.local_guardian;
           
-          // Only calculate risk if all data is complete
-          if (student.data_complete) {
-            await calculateAndUpdateRisk(student);
-          } else {
-            console.log(`Risk calculation pending for ${student_id}. Waiting for Local Guardian data.`);
+          // Calculate risk assessment for the student
+          try {
+            console.log(`Calculating risk for student ${student_id} (attendance upload):`, {
+              attendance_rate: student.attendance_rate,
+              fee_status: student.fee_status,
+              days_overdue: student.days_overdue,
+              hasGrades: student.grades && student.grades.length > 0,
+              data_completion: student.data_completion
+            });
+            
+            const riskAssessment = await riskCalculator.calculateRisk(student);
+            if (riskAssessment) {
+              student.risk_level = riskAssessment.risk_level;
+              student.risk_score = riskAssessment.risk_score;
+              student.risk_factors = riskAssessment.risk_factors;
+              student.explanation = riskAssessment.explanation;
+              student.recommendations = riskAssessment.recommendations;
+              
+              console.log(`Risk calculated for ${student_id} (attendance upload):`, {
+                risk_level: riskAssessment.risk_level,
+                risk_score: riskAssessment.risk_score,
+                factors: riskAssessment.risk_factors
+              });
+            }
+          } catch (riskError) {
+            console.error(`Failed to calculate risk for student ${student_id}:`, riskError);
+            // Continue processing even if risk calculation fails
           }
           
           student.last_updated = new Date();
@@ -133,50 +297,48 @@ async function processExamDataUpload(req, res, next) {
       const examType = extractTextValue(row["Exam Type"] || row["exam_type"] || "end_sem");
       
       if (student_id) {
-        let student = await Student.findOne({ student_id });
-        
-        // If student doesn't exist, create new record with basic info
-        if (!student) {
-          student = new Student({
-            student_id,
-            name: student_name || "Unknown Student",
-            email: `${student_id}@example.com`,
-            parent_email: `${student_id}_parent@example.com`,
-            attendance_rate: 0, // Will be updated by faculty
-            fee_status: "pending", // Will be updated by guardian
-            days_overdue: 0,
-            grades: [], // Will be calculated from detailed grades
-            risk_level: "pending", // Will be calculated after all data is collected
-            risk_score: 0,
-            risk_factors: [],
-            explanation: [],
-            recommendations: [],
-            data_completion: {
-              exam_department: false,
-              faculty: false,
-              local_guardian: false
-            },
-            data_complete: false,
-            last_updated: new Date()
-          });
-        } else {
-          // If student exists, update basic info if provided
-          if (student_name && student_name !== "Unknown Student") {
-            student.name = student_name;
-          }
-        }
-
         // Process detailed grades based on exam type
         const detailedGrades = extractDetailedGrades(row, examType);
         
-        if (examType === "unit_test_1") {
-          student.unit_test_1_grades = detailedGrades;
-        } else if (examType === "unit_test_2") {
-          student.unit_test_2_grades = detailedGrades;
-        } else if (examType === "mid_sem") {
-          student.mid_sem_grades = detailedGrades;
-        } else if (examType === "end_sem") {
-          student.end_sem_grades = detailedGrades;
+        // Check if student exists
+        const existingStudent = await Student.findOne({ student_id });
+        let student;
+        
+        if (existingStudent) {
+          // Update existing student - only update specific fields to avoid conflicts
+          const updateData = {
+            $set: {
+              name: student_name || existingStudent.name || "Unknown Student",
+              email: existingStudent.email || `${student_id}@example.com`,
+              parent_email: existingStudent.parent_email || `${student_id}_parent@example.com`,
+              last_updated: new Date(),
+              "data_completion.exam_department": true,
+              "data_completion.last_updated": new Date()
+            }
+          };
+
+          // Add exam-specific grades
+          if (examType === "unit_test_1") {
+            updateData.$set.unit_test_1_grades = detailedGrades;
+          } else if (examType === "unit_test_2") {
+            updateData.$set.unit_test_2_grades = detailedGrades;
+          } else if (examType === "mid_sem") {
+            updateData.$set.mid_sem_grades = detailedGrades;
+          } else if (examType === "end_sem") {
+            updateData.$set.end_sem_grades = detailedGrades;
+          }
+
+          student = await Student.findOneAndUpdate(
+            { student_id },
+            updateData,
+            { new: true, runValidators: true }
+          );
+          
+          updatedStudents.push(student);
+        } else {
+          // Student doesn't exist - skip this student and log a warning
+          console.log(`⚠️ Student ${student_id} not found. Please upload student data first before uploading exam data.`);
+          continue;
         }
 
         // Update basic grades array for compatibility (only if we have grade data)
@@ -185,18 +347,41 @@ async function processExamDataUpload(req, res, next) {
         } else {
           student.grades = [];
         }
-        
-        // Mark exam department data as complete
-        student.data_completion.exam_department = true;
-        student.data_completion.last_updated = new Date();
+
+        // Calculate risk assessment for the student after updating grades
+        try {
+          console.log(`Calculating risk for student ${student_id}:`, {
+            attendance_rate: student.attendance_rate,
+            fee_status: student.fee_status,
+            days_overdue: student.days_overdue,
+            hasGrades: student.grades && student.grades.length > 0,
+            data_completion: student.data_completion
+          });
+          
+          const riskAssessment = await riskCalculator.calculateRisk(student);
+          if (riskAssessment) {
+            student.risk_level = riskAssessment.risk_level;
+            student.risk_score = riskAssessment.risk_score;
+            student.risk_factors = riskAssessment.risk_factors;
+            student.explanation = riskAssessment.explanation;
+            student.recommendations = riskAssessment.recommendations;
+            await student.save();
+            
+            console.log(`Risk calculated for ${student_id}:`, {
+              risk_level: riskAssessment.risk_level,
+              risk_score: riskAssessment.risk_score,
+              factors: riskAssessment.risk_factors
+            });
+          }
+        } catch (riskError) {
+          console.error(`Failed to calculate risk for student ${student_id}:`, riskError);
+          // Continue processing even if risk calculation fails
+        }
         
         // Check if all data is complete
         student.data_complete = student.data_completion.exam_department && 
                                student.data_completion.faculty && 
                                student.data_completion.local_guardian;
-        
-        // Update last updated timestamp
-        student.last_updated = new Date();
         
         await student.save();
         updatedStudents.push(student);
@@ -675,10 +860,52 @@ function normalizeFeeStatus(status) {
   return statusMap[normalized] || "current";
 }
 
+/**
+ * Clean up duplicate students by keeping the most recent one
+ */
+async function cleanupDuplicateStudents() {
+  try {
+    console.log("Starting duplicate student cleanup...");
+    
+    // Find all students
+    const allStudents = await Student.find({});
+    const studentMap = new Map();
+    const duplicates = [];
+    
+    // Group students by student_id
+    allStudents.forEach(student => {
+      if (studentMap.has(student.student_id)) {
+        duplicates.push(student);
+      } else {
+        studentMap.set(student.student_id, student);
+      }
+    });
+    
+    if (duplicates.length > 0) {
+      console.log(`Found ${duplicates.length} duplicate students. Removing duplicates...`);
+      
+      // Delete duplicate students (keep the ones in studentMap)
+      const duplicateIds = duplicates.map(student => student._id);
+      const result = await Student.deleteMany({ _id: { $in: duplicateIds } });
+      
+      console.log(`Cleaned up ${result.deletedCount} duplicate student records.`);
+      return result.deletedCount;
+    } else {
+      console.log("No duplicate students found.");
+      return 0;
+    }
+  } catch (error) {
+    console.error("Error cleaning up duplicate students:", error);
+    throw error;
+  }
+}
+
 module.exports = { 
   uploadController,
+  processStudentDataUpload,
   processAttendanceUpload,
   processExamDataUpload,
   processFeesUpload,
-  processFullDataUpload
+  processFullDataUpload,
+  cleanupDuplicateStudents
 };

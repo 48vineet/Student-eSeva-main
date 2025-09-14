@@ -5,6 +5,7 @@ import FacultyDashboard from './dashboards/FacultyDashboard';
 import ExamDepartmentDashboard from './dashboards/ExamDepartmentDashboard';
 import StudentDashboard from './dashboards/StudentDashboard';
 import GuardianDashboard from './dashboards/GuardianDashboard';
+import ParentDashboard from './dashboards/ParentDashboard';
 
 const RoleDashboard = () => {
   const { user } = useAuth();
@@ -21,6 +22,8 @@ const RoleDashboard = () => {
         return <StudentDashboard />;
       case 'local-guardian':
         return <GuardianDashboard />;
+      case 'parent':
+        return <ParentDashboard />;
       default:
         return (
           <div className="text-center py-8">

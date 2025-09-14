@@ -91,6 +91,25 @@ const FileUpload = ({ onClose, onSuccess }) => {
       multiple: true,
     });
 
+  const downloadSampleFile = () => {
+    const csvContent = `Student ID,Student Name,Email,Parent Email,Attendance Rate,Math,Science,English,History,Fee Status,Amount Paid,Amount Due,Due Date,Days Overdue
+ST001,John Doe,john.doe@student.edu,john.parent@email.com,85,78,82,85,88,Complete,50000,0,2025-01-15,0
+ST002,Jane Smith,jane.smith@student.edu,jane.parent@email.com,92,88,90,92,85,Partial,30000,20000,2025-01-15,0
+ST003,Bob Johnson,bob.johnson@student.edu,bob.parent@email.com,78,75,80,78,82,Due,0,50000,2025-01-15,0
+ST004,Alice Brown,alice.brown@student.edu,alice.parent@email.com,95,92,95,93,96,Complete,50000,0,2025-01-15,0
+ST005,Charlie Wilson,charlie.wilson@student.edu,charlie.parent@email.com,88,85,87,88,90,Overdue,25000,25000,2024-12-15,30`;
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'sample_complete_student_data.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-slate-900/80 via-blue-900/60 to-indigo-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
       <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl max-w-5xl w-full max-h-[95vh] flex flex-col border border-white/20 animate-fade-in-up">
@@ -195,10 +214,32 @@ const FileUpload = ({ onClose, onSuccess }) => {
             </div>
           </div>
 
+          {/* Sample Download Button */}
+          <div className="bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-100 rounded-2xl p-4 animate-fade-in-up shadow-sm" style={{animationDelay: '0.1s'}}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <Download className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-purple-800 text-sm">Need a sample file?</h4>
+                  <p className="text-purple-700 text-xs">Download our complete template with all possible columns</p>
+                </div>
+              </div>
+              <button
+                onClick={downloadSampleFile}
+                className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-all duration-200 transform active:scale-95 shadow-lg text-sm font-semibold"
+              >
+                <Download className="w-4 h-4" />
+                <span>Download Sample</span>
+              </button>
+            </div>
+          </div>
+
           {/* Compact Info Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Supported Formats Card */}
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-4 animate-fade-in-up shadow-sm hover:shadow-md transition-shadow duration-200" style={{animationDelay: '0.1s'}}>
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-4 animate-fade-in-up shadow-sm hover:shadow-md transition-shadow duration-200" style={{animationDelay: '0.2s'}}>
               <div className="flex items-center space-x-2 mb-3">
                 <div className="p-1.5 bg-blue-100 rounded-lg">
                   <FileSpreadsheet className="w-4 h-4 text-blue-600" />
@@ -218,7 +259,7 @@ const FileUpload = ({ onClose, onSuccess }) => {
             </div>
 
             {/* Data Replacement Warning */}
-            <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 rounded-2xl p-4 animate-fade-in-up shadow-sm hover:shadow-md transition-shadow duration-200" style={{animationDelay: '0.2s'}}>
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 rounded-2xl p-4 animate-fade-in-up shadow-sm hover:shadow-md transition-shadow duration-200" style={{animationDelay: '0.3s'}}>
               <div className="flex items-center space-x-2 mb-3">
                 <div className="p-1.5 bg-amber-100 rounded-lg">
                   <AlertTriangle className="w-4 h-4 text-amber-600" />
@@ -231,7 +272,7 @@ const FileUpload = ({ onClose, onSuccess }) => {
             </div>
 
             {/* Quick Requirements */}
-            <div className="bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-100 rounded-2xl p-4 animate-fade-in-up shadow-sm hover:shadow-md transition-shadow duration-200" style={{animationDelay: '0.3s'}}>
+            <div className="bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-100 rounded-2xl p-4 animate-fade-in-up shadow-sm hover:shadow-md transition-shadow duration-200" style={{animationDelay: '0.4s'}}>
               <div className="flex items-center space-x-2 mb-3">
                 <div className="p-1.5 bg-emerald-100 rounded-lg">
                   <Target className="w-4 h-4 text-emerald-600" />
@@ -252,7 +293,7 @@ const FileUpload = ({ onClose, onSuccess }) => {
           </div>
 
           {/* Detailed Requirements - Collapsible */}
-          <div className="bg-gradient-to-br from-gray-50 to-blue-50 border border-gray-100 rounded-2xl p-4 animate-fade-in-up shadow-sm" style={{animationDelay: '0.4s'}}>
+          <div className="bg-gradient-to-br from-gray-50 to-blue-50 border border-gray-100 rounded-2xl p-4 animate-fade-in-up shadow-sm" style={{animationDelay: '0.5s'}}>
             <details className="group">
               <summary className="flex items-center space-x-2 cursor-pointer list-none">
                 <div className="p-1.5 bg-gray-100 rounded-lg group-open:bg-blue-100 transition-colors">

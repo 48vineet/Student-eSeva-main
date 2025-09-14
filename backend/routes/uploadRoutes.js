@@ -23,6 +23,9 @@ router.use(authenticate);
 // Faculty attendance upload
 router.post("/attendance", authorizeFacultyUpload, upload.single("file"), uploadController);
 
+// Faculty student data upload (with emails)
+router.post("/", authorize(["faculty"]), upload.single("file"), uploadController);
+
 // Exam department data upload
 router.post("/exam-data", authorizeExamDeptUpload, upload.single("file"), uploadController);
 

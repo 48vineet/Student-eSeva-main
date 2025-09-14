@@ -42,6 +42,11 @@ const RecommendationSchema = new mongoose.Schema({
 
 // Action tracking schema for parent/guardian approval workflow
 const ActionSchema = new mongoose.Schema({
+  type: { 
+    type: String, 
+    enum: ["meeting", "counseling", "academic_support", "attendance", "fees", "general"], 
+    default: "general" 
+  },
   description: { type: String, required: true },
   counselor_notes: { type: String, required: true },
   status: { 

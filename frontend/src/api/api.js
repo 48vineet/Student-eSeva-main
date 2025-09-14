@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 const ML_API_URL = import.meta.env.VITE_ML_API_URL || "http://localhost:5002";
 
 // Create axios instance with base configuration
@@ -27,8 +27,19 @@ apiClient.interceptors.request.use(
 
 // Response interceptor
 apiClient.interceptors.response.use(
-  (response) => response.data,
+  (response) => response,
   (error) => {
+    // Handle 401 Unauthorized (expired token)
+    if (error.response?.status === 401) {
+      console.log("Token expired, redirecting to login...");
+      // Clear the token from localStorage
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      // Redirect to login page
+      window.location.href = '/login';
+      return Promise.reject(error);
+    }
+    
     // Don't log 403 errors as they're handled gracefully in components
     if (error.response?.status !== 403) {
       console.error("API Error:", error.response?.data || error.message);
@@ -44,6 +55,7 @@ export const api = {
     apiClient.post("/api/upload/exam-data", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
+    
 
   // Students - GET /api/students
   getStudents: (params = {}) => apiClient.get("/api/students", { params }),
@@ -57,6 +69,24 @@ export const api = {
   // Recalculate risk - POST /api/students/:studentId/recalculate
   recalculateRisk: (studentId) =>
     apiClient.post(`/api/students/${studentId}/recalculate`),
+
+  // Data deletion endpoints
+  deleteExamData: (studentId) => apiClient.delete(`/api/students/${studentId}/exam-data`),
+  deleteAttendanceData: (studentId) => apiClient.delete(`/api/students/${studentId}/attendance-data`),
+  deleteFeesData: (studentId) => apiClient.delete(`/api/students/${studentId}/fees-data`),
+  
+  // Complete student record deletion (counselor only)
+  deleteStudentRecord: (studentId) => apiClient.delete(`/api/students/${studentId}`),
+  
+  // Delete ALL student records (counselor only)
+  deleteAllStudentRecords: () => apiClient.delete('/api/students'),
+  
+  // Cleanup duplicate students (counselor only)
+  cleanupDuplicateStudents: () => apiClient.post('/api/students/cleanup-duplicates'),
+
+  // Parent-specific API calls
+  getStudentActions: (studentId) => apiClient.get(`/api/students/${studentId}/actions`),
+  updateAction: (actionId, data) => apiClient.put(`/api/actions/${actionId}`, data),
 
   // Send notifications - POST /api/notifications
   sendNotifications: () => apiClient.post("/api/notifications", {}, {
@@ -74,6 +104,14 @@ export const api = {
 
   // Health check
   healthCheck: () => apiClient.get("/health"),
+  
+  // Email Alert API calls
+  sendEmailAlert: (data) => apiClient.post("/api/email-alerts/send", data),
+  getMyEmailAlerts: (params) => apiClient.get("/api/email-alerts/my-alerts", { params }),
+  getStudentEmailAlerts: (studentId, params) => apiClient.get(`/api/email-alerts/student/${studentId}`, { params }),
+  getEligibleStudents: (params) => apiClient.get("/api/email-alerts/eligible-students", { params }),
+  updateAlertStatus: (alertId, data) => apiClient.put(`/api/email-alerts/${alertId}/status`, data),
+  getAlertStatistics: () => apiClient.get("/api/email-alerts/statistics"),
 };
 
 // ML API calls

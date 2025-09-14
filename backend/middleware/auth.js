@@ -27,6 +27,7 @@ const authenticate = async (req, res, next) => {
     req.user = {
       userId: user._id,
       role: user.role,
+      name: user.username, // Use username as the name
       student_id: user.student_id || null,
       ward_student_id: user.ward_student_id || null,
       department: user.department || null
@@ -113,6 +114,23 @@ const authorizeStudentData = async (req, res, next) => {
       return next();
     }
 
+    // Parents can only access their child's data
+    if (role === "parent") {
+      if (!safeStudentId) {
+        return res.status(400).json({
+          success: false,
+          error: "Child's Student ID not found in user profile"
+        });
+      }
+      if (targetStudentId && targetStudentId !== safeStudentId) {
+        return res.status(403).json({
+          success: false,
+          error: "Access denied. You can only view your child's data."
+        });
+      }
+      return next();
+    }
+
     // Local guardians can access all student data (institution-level role)
     if (role === "local-guardian") {
       return next();
@@ -185,10 +203,33 @@ const authorizeActionManagement = (req, res, next) => {
   }
 
   const { role } = req.user;
-  if (!["counselor", "local-guardian"].includes(role)) {
+  if (!["counselor", "local-guardian", "parent"].includes(role)) {
     return res.status(403).json({
       success: false,
-      error: "Only counselors and guardians can manage actions"
+      error: "Only counselors, guardians, and parents can manage actions"
+    });
+  }
+
+  next();
+};
+
+/**
+ * Authorize email alert operations
+ * Only counselors and faculty can send email alerts
+ */
+const authorizeEmailAlerts = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      error: "Authentication required"
+    });
+  }
+
+  const { role } = req.user;
+  if (!["counselor", "faculty"].includes(role)) {
+    return res.status(403).json({
+      success: false,
+      error: "Only counselors and faculty can send email alerts"
     });
   }
 
@@ -201,5 +242,6 @@ module.exports = {
   authorizeStudentData,
   authorizeFacultyUpload,
   authorizeExamDeptUpload,
-  authorizeActionManagement
+  authorizeActionManagement,
+  authorizeEmailAlerts
 };

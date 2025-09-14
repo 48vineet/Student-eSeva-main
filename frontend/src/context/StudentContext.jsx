@@ -52,7 +52,7 @@ function studentReducer(state, action) {
 
 export function StudentProvider({ children }) {
   const [state, dispatch] = useReducer(studentReducer, initialState);
-  const { isAuthenticated, token, loading: authLoading } = useAuth();
+  const { isAuthenticated, token, loading: authLoading, user } = useAuth();
   const location = useLocation(); // Get current route
   const hasFetchedRef = useRef(false); // Track if we've already fetched data
   const fetchTimeoutRef = useRef(null); // For debouncing
@@ -74,8 +74,17 @@ export function StudentProvider({ children }) {
     try {
       dispatch({ type: "SET_LOADING", payload: true });
       const response = await api.getStudents(filters);
-      dispatch({ type: "SET_STUDENTS", payload: response.students });
-      return response;
+      console.log('fetchStudents response:', response);
+      
+      // Handle the new response structure (full response object)
+      if (response?.data?.success && response.data.students) {
+        dispatch({ type: "SET_STUDENTS", payload: response.data.students });
+        return response.data;
+      } else {
+        dispatch({ type: "SET_STUDENTS", payload: [] });
+        dispatch({ type: "SET_ERROR", payload: "No student data available." });
+        return response;
+      }
     } catch (error) {
       console.error('fetchStudents: API error:', error);
       // Handle 403 errors gracefully - might be no data or permission issue
@@ -83,6 +92,10 @@ export function StudentProvider({ children }) {
         dispatch({ type: "SET_STUDENTS", payload: [] });
         dispatch({ type: "SET_ERROR", payload: "No student data available. Please upload student data first." });
         return; // Don't throw error for 403
+      } else if (error.response?.status === 401) {
+        dispatch({ type: "SET_STUDENTS", payload: [] });
+        dispatch({ type: "SET_ERROR", payload: "Session expired. Please log in again." });
+        return;
       } else {
         dispatch({ type: "SET_ERROR", payload: error.message });
         throw error;
@@ -105,13 +118,25 @@ export function StudentProvider({ children }) {
     
     try {
       const response = await api.getDashboardSummary();
-      dispatch({ type: "SET_SUMMARY", payload: response.summary });
-      return response;
+      console.log('fetchSummary response:', response);
+      
+      // Handle the new response structure (full response object)
+      if (response?.data?.success && response.data.summary) {
+        dispatch({ type: "SET_SUMMARY", payload: response.data.summary });
+        return response.data;
+      } else {
+        dispatch({ type: "SET_SUMMARY", payload: { total: 0, high: 0, medium: 0, low: 0, avgAttendance: 0 } });
+        return response;
+      }
     } catch (error) {
+      console.error('fetchSummary: API error:', error);
       // Handle 403 errors gracefully - might be no data or permission issue
       if (error.response?.status === 403) {
         dispatch({ type: "SET_SUMMARY", payload: { total: 0, high: 0, medium: 0, low: 0, avgAttendance: 0 } });
         return; // Don't throw error for 403
+      } else if (error.response?.status === 401) {
+        dispatch({ type: "SET_SUMMARY", payload: { total: 0, high: 0, medium: 0, low: 0, avgAttendance: 0 } });
+        return;
       } else {
         dispatch({ type: "SET_ERROR", payload: error.message });
         throw error;
@@ -132,11 +157,19 @@ export function StudentProvider({ children }) {
         formData.append("file", file);
 
         const response = await api.uploadFile(formData);
-        // Use SET_STUDENTS to replace all students (since backend clears data)
-        dispatch({ type: "SET_STUDENTS", payload: response.students });
-        dispatch({ type: "SET_SUMMARY", payload: response.summary });
-        return response;
+        console.log('uploadStudents response:', response);
+        
+        // Handle the new response structure (full response object)
+        if (response?.data?.success) {
+          dispatch({ type: "SET_STUDENTS", payload: response.data.students || [] });
+          dispatch({ type: "SET_SUMMARY", payload: response.data.summary || { total: 0, high: 0, medium: 0, low: 0, avgAttendance: 0 } });
+          return response.data;
+        } else {
+          dispatch({ type: "SET_ERROR", payload: "Upload failed" });
+          return response;
+        }
       } catch (error) {
+        console.error('uploadStudents error:', error);
         dispatch({ type: "SET_ERROR", payload: error.message });
         throw error;
       }
@@ -145,9 +178,18 @@ export function StudentProvider({ children }) {
     recalculateStudent: async (studentId) => {
       try {
         const response = await api.recalculateRisk(studentId);
-        dispatch({ type: "UPDATE_STUDENT", payload: response.student });
-        return response;
+        console.log('recalculateStudent response:', response);
+        
+        // Handle the new response structure (full response object)
+        if (response?.data?.success && response.data.student) {
+          dispatch({ type: "UPDATE_STUDENT", payload: response.data.student });
+          return response.data;
+        } else {
+          dispatch({ type: "SET_ERROR", payload: "Recalculation failed" });
+          return response;
+        }
       } catch (error) {
+        console.error('recalculateStudent error:', error);
         dispatch({ type: "SET_ERROR", payload: error.message });
         throw error;
       }
@@ -198,7 +240,25 @@ export function StudentProvider({ children }) {
     }
   }, [authLoading, isAuthenticated]);
 
+  // Auto-fetch data when user is authenticated and on protected routes
+  useEffect(() => {
+    if (isAuthenticated && !authLoading && !hasFetchedRef.current) {
+      const currentPath = location.pathname;
+      const isProtectedRoute = currentPath === '/dashboard' || currentPath === '/settings' || currentPath === '/';
+      
+      // Only fetch data for roles that need bulk student data (exclude student and parent roles)
+      if (isProtectedRoute && user?.role !== 'student' && user?.role !== 'parent') {
+        hasFetchedRef.current = true;
+        fetchStudents();
+        fetchSummary();
+      }
+    }
+  }, [isAuthenticated, authLoading, location.pathname, fetchStudents, fetchSummary, user?.role]);
+
   // Debug: Log current state
+  console.log('StudentContext - students:', state.students);
+  console.log('StudentContext - loading:', state.loading);
+  console.log('StudentContext - error:', state.error);
 
   return (
     <StudentContext.Provider value={{ state, actions }}>

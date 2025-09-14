@@ -167,7 +167,24 @@ class RiskCalculator {
                              data.mid_sem_grades && data.end_sem_grades;
 
     if (!hasDetailedGrades) {
-      return { score: 0, factors: [], explanations: [], recommendations: [] };
+      // If no detailed grades, still provide basic analysis based on current grades
+      const avgGrade = data.grades && data.grades.length 
+        ? data.grades.reduce((sum, g) => sum + g.score, 0) / data.grades.length 
+        : 0;
+      
+      if (avgGrade < 50) {
+        score += 20;
+        factors.push("low_performance");
+        explanations.push("Overall performance below 50%");
+        recommendations.push({ action: "Intensive academic support", urgency: "high" });
+      } else if (avgGrade < 70) {
+        score += 10;
+        factors.push("moderate_performance");
+        explanations.push("Performance needs improvement");
+        recommendations.push({ action: "Additional tutoring", urgency: "medium" });
+      }
+      
+      return { score, factors, explanations, recommendations };
     }
 
     // Analyze progression for each subject

@@ -112,50 +112,86 @@ const Home = () => {
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
       </div>
 
-      {/* Navigation */}
+      {/* Enhanced Navigation */}
       <nav className="relative z-10 p-6">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl">
-              <Shield className="w-8 h-8 text-white" />
+        <div className="max-w-7xl mx-auto">
+          <div className="flex justify-between items-center">
+            {/* Logo Section */}
+            <Link to="/" className="group flex items-center space-x-4">
+              <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-2xl shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-105">
+                <Shield className="w-8 h-8 text-white" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-2xl font-bold text-white group-hover:text-cyan-300 transition-colors duration-300">
+                  Student eSeva
+                </span>
+                <span className="text-sm text-white/70 group-hover:text-white/90 transition-colors duration-300">
+                  AI-Powered Student Monitoring
+                </span>
+              </div>
+            </Link>
+
+            {/* Navigation Links */}
+            <div className="hidden md:flex items-center space-x-2">
+              <Link
+                to="/"
+                className="px-4 py-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200 font-medium"
+              >
+                Home
+              </Link>
+              <Link
+                to="/dashboard"
+                className="px-4 py-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200 font-medium"
+              >
+                Dashboard
+              </Link>
+              {isAuthenticated && user?.role === 'counselor' && (
+                <Link
+                  to="/settings"
+                  className="px-4 py-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200 font-medium"
+                >
+                  Settings
+                </Link>
+              )}
             </div>
-            <span className="text-2xl font-bold text-white">Student eSeva</span>
-          </div>
-          <div className="flex space-x-4">
-            {isAuthenticated ? (
-              <>
-                <Link
-                  to="/dashboard"
-                  className="px-6 py-2 text-white/80 hover:text-white transition-colors duration-200"
-                >
-                  Dashboard
-                </Link>
-                {user?.role === 'counselor' && (
+
+            {/* Auth Section */}
+            <div className="flex items-center space-x-3">
+              {isAuthenticated ? (
+                <div className="flex items-center space-x-4">
+                  {/* User Info */}
+                  <div className="hidden sm:flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/20">
+                    <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                      {user?.username?.charAt(0).toUpperCase() || 'U'}
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-white font-semibold text-sm">
+                        {user?.username || 'User'}
+                      </span>
+                      <span className="text-white/70 text-xs capitalize">
+                        {user?.role?.replace('-', ' ') || 'User'}
+                      </span>
+                    </div>
+                  </div>
+                  <ModalUserMenu />
+                </div>
+              ) : (
+                <div className="flex items-center space-x-3">
                   <Link
-                    to="/settings"
-                    className="px-6 py-2 text-white/80 hover:text-white transition-colors duration-200"
+                    to="/login"
+                    className="px-6 py-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200 font-medium"
                   >
-                    Settings
+                    Login
                   </Link>
-                )}
-                <ModalUserMenu />
-              </>
-            ) : (
-              <>
-                <Link
-                  to="/login"
-                  className="px-6 py-2 text-white/80 hover:text-white transition-colors duration-200"
-                >
-                  Login
-                </Link>
-                <Link
-                  to="/signup"
-                  className="px-6 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors duration-200"
-                >
-                  Sign Up
-                </Link>
-              </>
-            )}
+                  <Link
+                    to="/signup"
+                    className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:scale-105"
+                  >
+                    Sign Up
+                  </Link>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </nav>

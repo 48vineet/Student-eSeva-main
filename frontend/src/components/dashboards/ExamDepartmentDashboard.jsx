@@ -6,7 +6,8 @@ import { api } from '../../api/api';
 import StudentTable from '../StudentTable';
 import ExamDataUpload from '../ExamDataUpload';
 import StudentDetailsModal from '../StudentDetailsModal';
-import ModalUserMenu from '../ModalUserMenu';
+import DeleteDataModal from '../DeleteDataModal';
+import Navbar from '../Navbar';
 import {
   Upload,
   FileText,
@@ -30,12 +31,14 @@ import {
   Plus,
   Settings,
   Bell,
-  Activity
+  Activity,
+  Trash2
 } from 'lucide-react';
 
 const ExamDepartmentDashboard = () => {
   const { user } = useAuth();
-  const { students, loading, error, summary, actions } = useStudents();
+  const { state, actions } = useStudents();
+  const { students, loading, error, summary } = state;
   const { refreshData } = actions;
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -44,6 +47,8 @@ const ExamDepartmentDashboard = () => {
   const [filterRisk, setFilterRisk] = useState('all');
   const [localStudents, setLocalStudents] = useState([]);
   const [localLoading, setLocalLoading] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteModalStudent, setDeleteModalStudent] = useState(null);
   const hasMountedRef = useRef(false);
 
   // Direct data fetching function
@@ -86,6 +91,94 @@ const ExamDepartmentDashboard = () => {
     await refreshData();
   };
 
+  const handleDeleteAllExamData = async () => {
+    if (!confirm('Are you sure you want to delete ALL exam data for ALL students? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      // Get all students first
+      const allStudents = localStudents.length > 0 ? localStudents : (students || []);
+      
+      if (allStudents.length === 0) {
+        alert('No students found to delete data from.');
+        return;
+      }
+
+      // Delete exam data for each student
+      const deletePromises = allStudents.map(student => 
+        api.deleteExamData(student.student_id)
+      );
+
+      await Promise.all(deletePromises);
+      
+      alert(`Successfully deleted exam data for ${allStudents.length} students.`);
+      
+      // Refresh the data
+      await fetchStudentsDirect();
+      await refreshData();
+    } catch (error) {
+      console.error('Error deleting all exam data:', error);
+      alert('Error occurred while deleting exam data. Please try again.');
+    }
+  };
+
+  // Handle individual student delete modal
+  const handleDeleteStudentExamData = (student) => {
+    setDeleteModalStudent(student);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteModalStudent) return;
+    
+    try {
+      await api.deleteExamData(deleteModalStudent.student_id);
+      setShowDeleteModal(false);
+      setDeleteModalStudent(null);
+      await fetchStudentsDirect();
+      await refreshData();
+    } catch (error) {
+      console.error('Error deleting exam data:', error);
+      alert('Error occurred while deleting exam data. Please try again.');
+    }
+  };
+
+  const handleDeleteAllStudents = async () => {
+    // Double confirmation for critical action
+    if (!confirm('⚠️ CRITICAL ACTION: Are you sure you want to delete ALL students from the database? This will permanently remove all student records including exam data, attendance, fees, and risk assessments.')) {
+      return;
+    }
+
+    const confirmText = 'DELETE ALL STUDENTS';
+    const userInput = prompt(`This action cannot be undone! Type "${confirmText}" to confirm deletion of all student records:`);
+    
+    if (userInput !== confirmText) {
+      alert('Action cancelled. You must type the exact confirmation text.');
+      return;
+    }
+
+    try {
+      const response = await api.deleteAllStudentRecords();
+      alert(`Successfully deleted ${response.deletedCount} student records from the database.`);
+      
+      // Refresh the data
+      await fetchStudentsDirect();
+      await refreshData();
+    } catch (error) {
+      console.error('Error deleting all students:', error);
+      alert('Error occurred while deleting all students. Please try again.');
+    }
+  };
+
+  const handleShowUpload = () => {
+    setShowUpload(true);
+  };
+
+  const handleCloseUpload = () => {
+    setShowUpload(false);
+  };
+
   // Use local students as fallback if context students is undefined
   const displayStudents = students || localStudents;
   const displayLoading = loading || localLoading;
@@ -115,7 +208,7 @@ const ExamDepartmentDashboard = () => {
     examComplete: displayStudents?.filter(s => s.data_completion?.exam_department).length || 0,
     facultyComplete: displayStudents?.filter(s => s.data_completion?.faculty).length || 0,
     guardianComplete: displayStudents?.filter(s => s.data_completion?.local_guardian).length || 0,
-    allComplete: students?.filter(s => s.data_complete).length || 0
+    allComplete: displayStudents?.filter(s => s.data_complete).length || 0
   };
 
   if (displayLoading) {
@@ -137,49 +230,23 @@ const ExamDepartmentDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-white via-green-50 to-emerald-50 backdrop-blur-sm shadow-lg border-b border-green-200/50 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="animate-fade-in">
-              <Link to="/" className="group">
-                <div className="flex items-center space-x-4">
-                  <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-105">
-                    <FileText className="w-8 h-8 text-white" />
-                  </div>
-                  <div>
-                    <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent group-hover:from-green-700 group-hover:to-emerald-700 transition-all duration-300">
-                      Exam Department Dashboard
-                    </h1>
-                    <p className="text-gray-700 mt-1">
-                      Welcome back, <span className="font-semibold text-gray-900">{user.username}</span>
-                    </p>
-                  </div>
-                </div>
-              </Link>
-            </div>
-            <div className="flex items-center space-x-4 animate-fade-in-up">
-              <button
-                onClick={handleRefresh}
-                className="group flex items-center space-x-2 px-3 py-2 text-gray-700 bg-white hover:bg-gray-100 rounded-lg text-sm font-medium transition-all duration-300 transform hover:scale-105 border border-gray-200 shadow-md hover:shadow-lg"
-              >
-                <RefreshCw className={`w-4 h-4 group-hover:rotate-180 transition-transform duration-500 ${loading ? 'animate-spin' : ''}`} />
-                <span>Refresh</span>
-              </button>
-              <div className="flex items-center space-x-3 bg-white rounded-xl px-4 py-2 border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-md ring-2 ring-white/50">
-                  <span className="text-white font-bold text-sm">{user.username?.charAt(0)?.toUpperCase() || 'E'}</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-black font-semibold text-sm">{user.username}</span>
-                  <span className="text-gray-600 text-xs capitalize">{user.role?.replace('-', ' ')}</span>
-                </div>
-                <ModalUserMenu />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Modern Navbar */}
+      <Navbar
+        title="Exam Department Dashboard"
+        subtitle={`Welcome back, ${user.username}`}
+        icon={FileText}
+        onRefresh={handleRefresh}
+        isLoading={displayLoading}
+        additionalActions={
+          <button
+            onClick={handleShowUpload}
+            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+          >
+            <Upload className="w-4 h-4" />
+            <span className="hidden sm:inline">Upload Data</span>
+          </button>
+        }
+      />
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -424,6 +491,7 @@ const ExamDepartmentDashboard = () => {
             </div>
           </div>
 
+
           {/* Quick Stats */}
           <div className="group bg-white/80 backdrop-blur-sm rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 animate-fade-in-up" style={{animationDelay: '0.6s'}}>
             <div className="p-8">
@@ -457,37 +525,24 @@ const ExamDepartmentDashboard = () => {
           </div>
         </div>
 
-        {/* Search and Filter */}
+        {/* Risk Filter */}
         <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-6 mb-8 animate-fade-in-up" style={{animationDelay: '0.7s'}}>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Search students by name or ID..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
-              />
-            </div>
-            <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <h3 className="text-lg font-semibold text-gray-900">Filter by Risk Level</h3>
               <select
                 value={filterRisk}
                 onChange={(e) => setFilterRisk(e.target.value)}
-                className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
               >
                 <option value="all">All Risk Levels</option>
                 <option value="high">High Risk</option>
                 <option value="medium">Medium Risk</option>
                 <option value="low">Low Risk</option>
               </select>
-              <button
-                onClick={handleRefresh}
-                className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center space-x-2"
-              >
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                <span>Refresh</span>
-              </button>
+            </div>
+            <div className="text-sm text-gray-600">
+              Showing {filteredStudents.length} of {displayStudents?.length || 0} students
             </div>
           </div>
         </div>
@@ -527,11 +582,31 @@ const ExamDepartmentDashboard = () => {
               <StudentTable 
                 students={filteredStudents} 
                 onStudentSelect={handleStudentSelect}
-                showActions={false}
+                showActions={true}
                 filterByGrades={true}
+                onDeleteClick={handleDeleteStudentExamData}
               />
             )}
           </div>
+        </div>
+
+        {/* Delete All Buttons */}
+        <div className="mt-6 flex justify-center space-x-4">
+          <button
+            onClick={() => handleDeleteAllExamData()}
+            className="group relative inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white text-sm font-medium rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            <span>Delete All Exam Data</span>
+          </button>
+          
+          <button
+            onClick={() => handleDeleteAllStudents()}
+            className="group relative inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-red-800 to-red-900 text-white text-sm font-bold rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 border-2 border-red-700"
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            <span>⚠️ Delete All Students</span>
+          </button>
         </div>
       </div>
 
@@ -546,6 +621,7 @@ const ExamDepartmentDashboard = () => {
                   // Refresh the data after successful upload
                   fetchStudentsDirect();
                   refreshData();
+                  setShowUpload(false); // Close the modal
                 }}
               />
             </div>
@@ -558,7 +634,32 @@ const ExamDepartmentDashboard = () => {
         <StudentDetailsModal
           student={selectedStudent}
           onClose={handleCloseModal}
-          showActions={false}
+          showActions={true}
+        />
+      )}
+
+      {showUpload && (
+        <ExamDataUpload
+          onClose={handleCloseUpload}
+          onUploadSuccess={() => {
+            handleRefresh();
+            handleCloseUpload();
+          }}
+        />
+      )}
+
+      {/* Delete Data Modal */}
+      {showDeleteModal && deleteModalStudent && (
+        <DeleteDataModal
+          isOpen={showDeleteModal}
+          onClose={() => {
+            setShowDeleteModal(false);
+            setDeleteModalStudent(null);
+          }}
+          onConfirm={handleDeleteConfirm}
+          student={deleteModalStudent}
+          dataType="exam"
+          role="exam-department"
         />
       )}
     </div>

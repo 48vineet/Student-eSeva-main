@@ -55,9 +55,6 @@ const Settings = () => {
     semester: "1",
     emailNotifications: true,
     smsNotifications: false,
-    attendanceWeight: 0.4,
-    academicWeight: 0.4,
-    financialWeight: 0.2,
   });
 
   const [saving, setSaving] = useState(false);
@@ -134,7 +131,6 @@ const Settings = () => {
     { id: 'financial', label: 'Financial', icon: DollarSign, color: 'from-yellow-500 to-orange-500' },
     { id: 'institution', label: 'Institution', icon: Globe, color: 'from-indigo-500 to-purple-500' },
     { id: 'notifications', label: 'Notifications', icon: Bell, color: 'from-pink-500 to-rose-500' },
-    { id: 'advanced', label: 'Advanced', icon: SettingsIcon, color: 'from-gray-500 to-slate-500' },
     { id: 'preview', label: 'Preview', icon: Eye, color: 'from-purple-500 to-pink-500' },
   ];
 
@@ -310,49 +306,6 @@ const Settings = () => {
           type: 'checkbox',
           riskLevel: 'INFO',
           riskColor: 'text-blue-600'
-        }
-      ]
-    },
-    {
-      id: 'advanced',
-      title: 'Advanced Configuration',
-      description: 'Fine-tune risk calculation weights and advanced settings',
-      icon: Settings,
-      color: 'from-gray-500 to-slate-500',
-      bgColor: 'from-gray-50 to-slate-50',
-      fields: [
-        {
-          key: 'attendanceWeight',
-          label: 'Attendance Weight',
-          description: 'Weight of attendance in risk calculation (0.0 - 1.0)',
-          type: 'number',
-          min: 0,
-          max: 1,
-          step: 0.1,
-          riskLevel: 'ADVANCED',
-          riskColor: 'text-purple-600'
-        },
-        {
-          key: 'academicWeight',
-          label: 'Academic Weight',
-          description: 'Weight of academic performance in risk calculation (0.0 - 1.0)',
-          type: 'number',
-          min: 0,
-          max: 1,
-          step: 0.1,
-          riskLevel: 'ADVANCED',
-          riskColor: 'text-purple-600'
-        },
-        {
-          key: 'financialWeight',
-          label: 'Financial Weight',
-          description: 'Weight of financial status in risk calculation (0.0 - 1.0)',
-          type: 'number',
-          min: 0,
-          max: 1,
-          step: 0.1,
-          riskLevel: 'ADVANCED',
-          riskColor: 'text-purple-600'
         }
       ]
     }

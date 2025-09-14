@@ -27,7 +27,7 @@ const UserSchema = new mongoose.Schema(
     role: {
       type: String,
       required: true,
-      enum: ["counselor", "faculty", "exam-department", "student", "local-guardian"],
+      enum: ["counselor", "faculty", "exam-department", "student", "local-guardian", "parent"],
       default: "student",
     },
     // For students - link to student records

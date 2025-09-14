@@ -90,24 +90,26 @@ const ModalUserMenu = () => {
 
   const dropdownContent = isOpen && createPortal(
      <div
-       className="fixed top-20 right-6 z-50 bg-white border border-gray-200 rounded-xl shadow-2xl w-64 py-2"
-       style={{ backgroundColor: '#ffffff' }}
+       className="fixed top-20 right-6 z-50 bg-white/95 backdrop-blur-md border border-gray-200/50 rounded-2xl shadow-2xl w-72 py-3 animate-dropdown-fade-in"
        ref={menuRef}
      >
       {/* User Info Header */}
-      <div className="px-4 py-3 border-b border-gray-200">
-        <div className="flex items-center gap-3">
+      <div className="px-6 py-4 border-b border-gray-200/50">
+        <div className="flex items-center gap-4">
           <div 
-            className={`w-10 h-10 rounded-full bg-gradient-to-r ${getRoleColor(user?.role)} flex items-center justify-center text-white font-semibold`}
+            className={`w-12 h-12 rounded-full bg-gradient-to-r ${getRoleColor(user?.role)} flex items-center justify-center text-white font-bold shadow-lg ring-2 ring-white/50`}
           >
             {user?.username?.charAt(0).toUpperCase() || 'U'}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-semibold text-black truncate">
+            <div className="text-base font-semibold text-gray-900 truncate">
               {user?.username || 'User'}
             </div>
-            <div className="text-xs text-black truncate">
+            <div className="text-sm text-gray-600 truncate">
               {getRoleDisplayName(user?.role)}
+            </div>
+            <div className="text-xs text-gray-500 mt-1">
+              Online
             </div>
           </div>
         </div>
@@ -115,56 +117,75 @@ const ModalUserMenu = () => {
 
       {/* Menu Items */}
       <div className="py-2">
-        
-                  {/* Dashboard */}
-                  <button
-                    onClick={() => handleButtonClick('Dashboard')}
-                    className="w-full px-3 py-2 text-left text-blackb hover:bg-gray-100 hover:text-black transition-colors duration-200 flex items-center gap-2 rounded-lg "
-                    type="button"
-                  >
-                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5a2 2 0 012-2h4a2 2 0 012 2v6H8V5z" />
-                    </svg>
-                    <span className="font-medium text-sm">Dashboard</span>
-                  </button>
+        {/* Dashboard */}
+        <button
+          onClick={() => handleButtonClick('Dashboard')}
+          className="w-full px-6 py-3 text-left text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-all duration-200 flex items-center gap-3 rounded-xl group"
+          type="button"
+        >
+          <div className="p-2 rounded-lg bg-gray-100 group-hover:bg-blue-100 transition-colors duration-200">
+            <svg className="w-4 h-4 text-gray-600 group-hover:text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5a2 2 0 012-2h4a2 2 0 012 2v6H8V5z" />
+            </svg>
+          </div>
+          <div className="flex flex-col">
+            <span className="font-semibold text-sm">Dashboard</span>
+            <span className="text-xs text-gray-500">View your dashboard</span>
+          </div>
+        </button>
 
-                  {/* Profile Settings */}
-                  <button
-                    onClick={() => handleButtonClick('Profile Settings')}
-                    className="w-full px-3 py-2 text-left text-black hover:bg-gray-100 hover:text-black transition-colors duration-200 flex items-center gap-2 rounded-lg "
-                    type="button"
-                  >
-                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                    <span className="font-medium text-sm">Profile Settings</span>
-                  </button>
+        {/* Profile Settings */}
+        <button
+          onClick={() => handleButtonClick('Profile Settings')}
+          className="w-full px-6 py-3 text-left text-gray-700 hover:bg-green-50 hover:text-green-700 transition-all duration-200 flex items-center gap-3 rounded-xl group"
+          type="button"
+        >
+          <div className="p-2 rounded-lg bg-gray-100 group-hover:bg-green-100 transition-colors duration-200">
+            <svg className="w-4 h-4 text-gray-600 group-hover:text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </div>
+          <div className="flex flex-col">
+            <span className="font-semibold text-sm">Profile Settings</span>
+            <span className="text-xs text-gray-500">Manage your account</span>
+          </div>
+        </button>
 
-                  {/* Help & Support */}
-                  <button
-                    onClick={() => handleButtonClick('Help & Support')}
-                    className="w-full px-3 py-2 text-left text-black hover:bg-gray-100 hover:text-black transition-colors duration-200 flex items-center gap-2 rounded-lg "
-                    type="button"
-                  >
-                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span className="font-medium text-sm">Help & Support</span>
-                  </button>
-        
-        <div className="border-t border-gray-200 my-2"></div>
+        {/* Help & Support */}
+        <button
+          onClick={() => handleButtonClick('Help & Support')}
+          className="w-full px-6 py-3 text-left text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition-all duration-200 flex items-center gap-3 rounded-xl group"
+          type="button"
+        >
+          <div className="p-2 rounded-lg bg-gray-100 group-hover:bg-purple-100 transition-colors duration-200">
+            <svg className="w-4 h-4 text-gray-600 group-hover:text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div className="flex flex-col">
+            <span className="font-semibold text-sm">Help & Support</span>
+            <span className="text-xs text-gray-500">Get assistance</span>
+          </div>
+        </button>
+
+        <div className="border-t border-gray-200/50 my-3"></div>
         
         {/* Sign Out */}
         <button
           onClick={() => handleButtonClick('Sign Out')}
-        className="w-full px-3 py-2 text-left text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors duration-200 flex items-center gap-2 rounded-lg  "
+          className="w-full px-6 py-3 text-left text-red-600 hover:bg-red-50 hover:text-red-700 transition-all duration-200 flex items-center gap-3 rounded-xl group"
           type="button"
         >
-          <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-          </svg>
-          <span className="font-medium text-sm">Sign Out</span>
+          <div className="p-2 rounded-lg bg-red-100 group-hover:bg-red-200 transition-colors duration-200">
+            <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+          </div>
+          <div className="flex flex-col">
+            <span className="font-semibold text-sm">Sign Out</span>
+            <span className="text-xs text-red-500">Logout from your account</span>
+          </div>
         </button>
       </div>
     </div>,
@@ -180,27 +201,27 @@ const ModalUserMenu = () => {
             console.log('Toggle clicked!');
             setIsOpen(!isOpen);
           }}
-          className="flex items-center space-x-2 px-3 py-2 bg-white rounded-lg hover:bg-gray-100 transition-all duration-300 group shadow-md hover:shadow-lg border border-gray-200 hover:border-gray-300"
+          className="flex items-center space-x-3 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-xl hover:bg-white/20 transition-all duration-300 group shadow-lg hover:shadow-xl border border-white/20 hover:border-white/30"
         >
           {/* Avatar */}
-          <div className={`w-8 h-8 rounded-full bg-gradient-to-r ${getRoleColor(user?.role)} flex items-center justify-center text-white text-sm font-bold shadow-md ring-1 ring-white/50`}>
+          <div className={`w-10 h-10 rounded-full bg-gradient-to-r ${getRoleColor(user?.role)} flex items-center justify-center text-white text-sm font-bold shadow-lg ring-2 ring-white/50 group-hover:scale-105 transition-transform duration-200`}>
             {user?.username?.charAt(0).toUpperCase() || 'U'}
           </div>
           
           {/* User Info */}
           <div className="text-left flex-1 min-w-0">
-            <div className="text-sm font-semibold text-gray-900 truncate">
+            <div className="text-sm font-semibold text-white truncate group-hover:text-cyan-300 transition-colors duration-200">
               {user?.username || 'User'}
             </div>
-            <div className="text-xs text-gray-500 truncate">
+            <div className="text-xs text-white/70 truncate group-hover:text-white/90 transition-colors duration-200">
               {getRoleDisplayName(user?.role)}
             </div>
           </div>
           
           {/* Dropdown Arrow */}
-          <div className="p-1 rounded-full bg-gray-100 group-hover:bg-gray-200 transition-colors duration-200">
+          <div className="p-2 rounded-lg bg-white/10 group-hover:bg-white/20 transition-all duration-200">
             <svg 
-              className={`w-4 h-4 text-gray-600 group-hover:text-gray-700 transition-all duration-200 ${isOpen ? 'rotate-180' : ''}`} 
+              className={`w-4 h-4 text-white/70 group-hover:text-white transition-all duration-200 ${isOpen ? 'rotate-180' : ''}`} 
               fill="none" 
               stroke="currentColor" 
               viewBox="0 0 24 24"

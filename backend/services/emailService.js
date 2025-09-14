@@ -3,11 +3,27 @@ const { emailConfig } = require("../config/env");
 
 /**
  * Send an email
- * @param {string} to Recipient email
- * @param {string} subject Email subject
- * @param {string} html HTML content
+ * @param {string|Object} to Recipient email or email data object
+ * @param {string} subject Email subject (if to is string)
+ * @param {string} html HTML content (if to is string)
  */
 async function sendEmail(to, subject, html) {
+  // Support both old format and new object format
+  if (typeof to === 'object') {
+    const { to: recipient, subject: emailSubject, template, data } = to;
+    
+    if (template === 'alert') {
+      return sendAlertEmail(recipient, emailSubject, data);
+    }
+    
+    return transporter.sendMail({
+      from: emailConfig.user,
+      to: recipient,
+      subject: emailSubject,
+      html: data.html || '',
+    });
+  }
+  
   return transporter.sendMail({
     from: emailConfig.user,
     to,
@@ -233,9 +249,287 @@ async function sendEnhancedRiskNotificationEmail(student, recipientEmail, recipi
   return sendEmail(recipientEmail, subject, html);
 }
 
+/**
+ * Send email alert to student
+ * @param {string} recipientEmail Student email
+ * @param {string} subject Email subject
+ * @param {Object} data Alert data
+ */
+async function sendAlertEmail(recipientEmail, subject, data) {
+  const {
+    studentName,
+    senderName,
+    senderRole,
+    alertType,
+    priority,
+    message,
+    riskLevel,
+    riskScore,
+    attendanceRate,
+    feesStatus,
+    actionRequired,
+    actionDeadline,
+    followUpRequired,
+    followUpDate,
+    sentAt
+  } = data;
+
+  const priorityColor = priority === 'high' ? '#dc3545' : '#ffc107';
+  const riskColor = riskLevel === 'high' ? '#dc3545' : '#ffc107';
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Student Alert - ${subject}</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .alert-box { background: ${priorityColor}15; border: 2px solid ${priorityColor}; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .priority-badge { background: ${priorityColor}; color: white; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
+        .risk-info { background: ${riskColor}15; border: 1px solid ${riskColor}; padding: 15px; border-radius: 5px; margin: 15px 0; }
+        .action-required { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 15px 0; }
+        .follow-up { background: #d1ecf1; border: 1px solid #bee5eb; padding: 15px; border-radius: 5px; margin: 15px 0; }
+        .message-content { background: #f8f9fa; padding: 20px; border-radius: 5px; margin: 15px 0; white-space: pre-line; }
+        .footer { margin-top: 20px; padding-top: 20px; border-top: 1px solid #e9ecef; font-size: 12px; color: #6c757d; }
+        .btn { display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; margin: 10px 5px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h2>Student eSeva - Academic Alert</h2>
+          <p>Important communication from your ${senderRole}</p>
+        </div>
+        
+        <div class="alert-box">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h2 style="margin: 0; color: ${priorityColor};">${subject}</h2>
+            <span class="priority-badge">${priority} Priority</span>
+          </div>
+          <p><strong>Student:</strong> ${studentName}</p>
+          <p><strong>From:</strong> ${senderName} (${senderRole})</p>
+          <p><strong>Sent:</strong> ${sentAt}</p>
+        </div>
+        
+        <div class="risk-info">
+          <h4>Risk Assessment Information</h4>
+          <p><strong>Current Risk Level:</strong> <span style="color: ${riskColor}; font-weight: bold; text-transform: uppercase;">${riskLevel}</span></p>
+          <p><strong>Risk Score:</strong> ${riskScore}/100</p>
+          <p><strong>Alert Type:</strong> ${alertType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0;">
+          <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; text-align: center;">
+            <h4 style="margin: 0 0 10px 0;">Attendance</h4>
+            <p style="font-size: 24px; font-weight: bold; color: ${(attendanceRate || 0) < 75 ? '#dc3545' : (attendanceRate || 0) < 85 ? '#ffc107' : '#28a745'}; margin: 0;">${attendanceRate || 'N/A'}%</p>
+          </div>
+          <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; text-align: center;">
+            <h4 style="margin: 0 0 10px 0;">Fee Status</h4>
+            <p style="font-size: 18px; font-weight: bold; color: ${feesStatus === 'overdue' ? '#dc3545' : feesStatus === 'pending' ? '#ffc107' : '#28a745'}; margin: 0; text-transform: capitalize;">${feesStatus || 'Unknown'}</p>
+          </div>
+        </div>
+        
+        <div class="message-content">
+          <h4>Message from ${senderName}:</h4>
+          <p>${message}</p>
+        </div>
+        
+        ${actionRequired ? `
+          <div class="action-required">
+            <h4>⚠️ Action Required</h4>
+            <p>This alert requires immediate attention and action on your part.</p>
+            ${actionDeadline ? `<p><strong>Action Deadline:</strong> ${new Date(actionDeadline).toLocaleDateString()}</p>` : ''}
+            <p>Please contact your ${senderRole} or visit the counseling office as soon as possible.</p>
+          </div>
+        ` : ''}
+        
+        ${followUpRequired ? `
+          <div class="follow-up">
+            <h4>📅 Follow-up Required</h4>
+            <p>A follow-up meeting has been scheduled to discuss this matter further.</p>
+            ${followUpDate ? `<p><strong>Follow-up Date:</strong> ${new Date(followUpDate).toLocaleDateString()}</p>` : ''}
+            <p>Please ensure you are available for this important discussion.</p>
+          </div>
+        ` : ''}
+        
+        <div style="text-align: center; margin: 20px 0;">
+          <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/login" class="btn">Login to Student Portal</a>
+        </div>
+        
+        <div class="footer">
+          <p>This is an official communication from the Student eSeva system.</p>
+          <p>If you have any questions or concerns, please contact your ${senderRole} or visit the counseling office.</p>
+          <p>Please do not reply to this email. Use the student portal or contact the office directly.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  return transporter.sendMail({
+    from: emailConfig.user,
+    to: recipientEmail,
+    subject: `[${priority.toUpperCase()}] ${subject}`,
+    html,
+  });
+}
+
+/**
+ * Send notification email to student with action buttons
+ * @param {Object} data Student data and message
+ */
+async function sendStudentNotificationEmail(data) {
+  const { studentEmail, studentName, studentId, attendanceRate, message } = data;
+  const subject = `Attendance Update - Action Required`;
+  
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Attendance Update</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #4f46e5; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+        .alert { background: #fef3c7; border: 1px solid #f59e0b; padding: 15px; border-radius: 8px; margin: 20px 0; }
+        .button-container { text-align: center; margin: 30px 0; }
+        .btn { display: inline-block; padding: 12px 24px; margin: 0 10px; text-decoration: none; border-radius: 6px; font-weight: bold; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn:hover { opacity: 0.9; }
+        .footer { text-align: center; margin-top: 30px; color: #6b7280; font-size: 14px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>📚 Student Attendance Update</h1>
+        </div>
+        <div class="content">
+          <h2>Hello ${studentName}!</h2>
+          <p>This is an automated notification regarding your attendance status.</p>
+          
+          <div class="alert">
+            <h3>📊 Your Attendance Details:</h3>
+            <p><strong>Student ID:</strong> ${studentId}</p>
+            <p><strong>Attendance Rate:</strong> ${attendanceRate}%</p>
+            <p><strong>Message:</strong> ${message}</p>
+          </div>
+          
+          <p>Please review the actions taken by the faculty and respond accordingly:</p>
+          
+          <div class="button-container">
+            <a href="mailto:faculty@school.edu?subject=Action Taken - ${studentId}&body=I have taken the necessary action regarding my attendance." class="btn btn-success">
+              ✅ Action Taken
+            </a>
+            <a href="mailto:faculty@school.edu?subject=Action Rejected - ${studentId}&body=I disagree with the action taken. Please provide more information." class="btn btn-danger">
+              ❌ Reject Action
+            </a>
+          </div>
+          
+          <p><strong>Note:</strong> Please click one of the buttons above to respond to the faculty's action. You can also reply directly to this email.</p>
+        </div>
+        <div class="footer">
+          <p>This is an automated message from Student eSeva System</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  return transporter.sendMail({
+    from: emailConfig.user,
+    to: studentEmail,
+    subject,
+    html,
+  });
+}
+
+/**
+ * Send notification email to parent with action buttons
+ * @param {Object} data Student data and message
+ */
+async function sendParentNotificationEmail(data) {
+  const { parentEmail, studentName, studentId, attendanceRate, message } = data;
+  const subject = `Your Child's Attendance Update - Action Required`;
+  
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Student Attendance Update</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #dc2626; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+        .alert { background: #fee2e2; border: 1px solid #dc2626; padding: 15px; border-radius: 8px; margin: 20px 0; }
+        .button-container { text-align: center; margin: 30px 0; }
+        .btn { display: inline-block; padding: 12px 24px; margin: 0 10px; text-decoration: none; border-radius: 6px; font-weight: bold; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn:hover { opacity: 0.9; }
+        .footer { text-align: center; margin-top: 30px; color: #6b7280; font-size: 14px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>👨‍👩‍👧‍👦 Parent Notification</h1>
+        </div>
+        <div class="content">
+          <h2>Dear Parent/Guardian,</h2>
+          <p>This is an automated notification regarding your child's attendance status.</p>
+          
+          <div class="alert">
+            <h3>📊 Student Details:</h3>
+            <p><strong>Student Name:</strong> ${studentName}</p>
+            <p><strong>Student ID:</strong> ${studentId}</p>
+            <p><strong>Attendance Rate:</strong> ${attendanceRate}%</p>
+            <p><strong>Message:</strong> ${message}</p>
+          </div>
+          
+          <p>Please review the actions taken by the faculty and respond accordingly:</p>
+          
+          <div class="button-container">
+            <a href="mailto:faculty@school.edu?subject=Action Approved - ${studentId}&body=I approve the action taken for my child ${studentName}'s attendance." class="btn btn-success">
+              ✅ Approve Action
+            </a>
+            <a href="mailto:faculty@school.edu?subject=Action Rejected - ${studentId}&body=I disagree with the action taken for my child ${studentName}. Please provide more information." class="btn btn-danger">
+              ❌ Reject Action
+            </a>
+          </div>
+          
+          <p><strong>Note:</strong> Please click one of the buttons above to respond to the faculty's action. You can also reply directly to this email.</p>
+        </div>
+        <div class="footer">
+          <p>This is an automated message from Student eSeva System</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  return transporter.sendMail({
+    from: emailConfig.user,
+    to: parentEmail,
+    subject,
+    html,
+  });
+}
+
 module.exports = { 
   sendEmail, 
   sendActionApprovalEmail, 
   sendActionStatusUpdateEmail, 
-  sendEnhancedRiskNotificationEmail 
+  sendEnhancedRiskNotificationEmail,
+  sendAlertEmail,
+  sendStudentNotificationEmail,
+  sendParentNotificationEmail
 };

@@ -17,7 +17,7 @@ const ExamDataUpload = ({ onClose, onUploadSuccess }) => {
     setUploadedFile(file);
     setUploading(true);
     setError('');
-    setMessage('');
+    setMessage('Uploading and processing data...');
 
     const formData = new FormData();
     formData.append('file', file);
@@ -36,10 +36,12 @@ const ExamDataUpload = ({ onClose, onUploadSuccess }) => {
 
       setMessage(`Successfully updated ${response.updatedCount} student records`);
       
-      // Call the success callback to refresh data
-      if (onUploadSuccess) {
-        onUploadSuccess();
-      }
+      // Show success message briefly and then close modal
+      setTimeout(() => {
+        if (onUploadSuccess) {
+          onUploadSuccess();
+        }
+      }, 800); // Reduced to 0.8 seconds for faster response
     } catch (err) {
       console.error('Upload error:', err);
       setError(err.response?.data?.error || err.message || 'Upload failed');
@@ -67,6 +69,25 @@ const ExamDataUpload = ({ onClose, onUploadSuccess }) => {
   const getExamTypeColor = (type) => {
     const option = examTypeOptions.find(opt => opt.value === type);
     return option?.color || 'blue';
+  };
+
+  const downloadSampleFile = () => {
+    const csvContent = `Student ID,Student Name,Math,Science,English,History,Physics,Chemistry,Biology,Computer Science
+ST001,John Doe,85,92,78,88,90,87,89,95
+ST002,Jane Smith,92,88,95,91,89,93,87,92
+ST003,Bob Johnson,78,85,82,79,84,81,83,88
+ST004,Alice Brown,95,89,93,96,92,94,91,97
+ST005,Charlie Wilson,88,91,85,87,86,89,88,90`;
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sample_exam_data_${examType}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
   };
 
   return (
@@ -167,7 +188,10 @@ const ExamDataUpload = ({ onClose, onUploadSuccess }) => {
             <h4 className="text-sm font-medium text-gray-900">Need a sample file?</h4>
             <p className="text-xs text-gray-500">Download our template to see the correct format</p>
           </div>
-          <button className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200">
+          <button 
+            onClick={downloadSampleFile}
+            className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
+          >
             <Download className="w-4 h-4" />
             <span className="text-sm">Download Template</span>
           </button>
@@ -176,10 +200,14 @@ const ExamDataUpload = ({ onClose, onUploadSuccess }) => {
 
       {/* Messages */}
       {message && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+        <div className="bg-green-50 border-2 border-green-300 rounded-lg p-6 animate-pulse">
           <div className="flex items-center space-x-3">
-            <CheckCircle className="w-5 h-5 text-green-600" />
-            <p className="text-sm font-medium text-green-800">{message}</p>
+            <CheckCircle className="w-6 h-6 text-green-600" />
+            <div>
+              <h4 className="text-lg font-bold text-green-800">🎉 Upload Successful!</h4>
+              <p className="text-sm text-green-700 mt-1">{message}</p>
+              <p className="text-xs text-green-600 mt-2">Redirecting to dashboard...</p>
+            </div>
           </div>
         </div>
       )}
@@ -194,13 +222,81 @@ const ExamDataUpload = ({ onClose, onUploadSuccess }) => {
       )}
 
       {/* Instructions */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h4 className="text-sm font-semibold text-blue-900 mb-2">File Format Requirements</h4>
-        <div className="space-y-1 text-xs text-blue-800">
-          <p><strong>Required columns:</strong> Student ID, Subject grades (Math, Science, English, etc.)</p>
-          <p><strong>Optional columns:</strong> Student Name, Semester, Academic Year</p>
-          <p><strong>Grade format:</strong> Numeric values between 0-100</p>
-          <p><strong>File types:</strong> .xlsx or .xls only</p>
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+        <div className="flex items-start space-x-3">
+          <FileText className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+          <div className="space-y-3">
+            <h4 className="text-sm font-medium text-blue-800">File Format Requirements</h4>
+            
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <FileText className="w-4 h-4 text-blue-600" />
+                <span className="text-sm text-blue-700"><strong>Required columns:</strong></span>
+              </div>
+              <ul className="ml-6 space-y-1 text-sm text-blue-700">
+                <li>• Student ID (unique identifier)</li>
+                <li>• Subject columns (Math, Science, English, etc.)</li>
+                <li>• Grades must be numeric values (0-100)</li>
+              </ul>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <FileText className="w-4 h-4 text-blue-600" />
+                <span className="text-sm text-blue-700"><strong>Optional columns:</strong></span>
+              </div>
+              <ul className="ml-6 space-y-1 text-sm text-blue-700">
+                <li>• Student Name</li>
+                <li>• Semester</li>
+                <li>• Academic Year</li>
+                <li>• Exam Type</li>
+              </ul>
+            </div>
+
+            <div className="bg-blue-100 border border-blue-300 rounded-lg p-3">
+              <p className="text-sm text-blue-800">
+                <strong>Important:</strong> This upload will create new student records if they don't exist. 
+                Make sure Student IDs are unique and consistent across all uploads.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Sample Data */}
+      <div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
+        <h4 className="text-sm font-medium text-gray-800 mb-3">Sample Data Format:</h4>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-xs">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="px-3 py-2 text-left font-medium text-gray-700">Student ID</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-700">Student Name</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-700">Math</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-700">Science</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-700">English</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-700">History</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white">
+              <tr>
+                <td className="px-3 py-2 text-gray-600">ST001</td>
+                <td className="px-3 py-2 text-gray-600">John Doe</td>
+                <td className="px-3 py-2 text-gray-600">85</td>
+                <td className="px-3 py-2 text-gray-600">92</td>
+                <td className="px-3 py-2 text-gray-600">78</td>
+                <td className="px-3 py-2 text-gray-600">88</td>
+              </tr>
+              <tr>
+                <td className="px-3 py-2 text-gray-600">ST002</td>
+                <td className="px-3 py-2 text-gray-600">Jane Smith</td>
+                <td className="px-3 py-2 text-gray-600">92</td>
+                <td className="px-3 py-2 text-gray-600">88</td>
+                <td className="px-3 py-2 text-gray-600">95</td>
+                <td className="px-3 py-2 text-gray-600">91</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 

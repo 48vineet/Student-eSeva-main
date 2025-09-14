@@ -66,6 +66,10 @@ const Signup = () => {
       newErrors.student_id = 'Student ID is required for student accounts';
     }
     
+    if (formData.role === 'parent' && !formData.student_id) {
+      newErrors.student_id = 'Child\'s Student ID is required for parent accounts';
+    }
+    
     if (formData.role === 'local-guardian' && !formData.ward_student_id) {
       newErrors.ward_student_id = 'Ward Student ID is required for guardian accounts';
     }
@@ -96,6 +100,7 @@ const Signup = () => {
       'faculty': 'Upload attendance data and view student information',
       'exam-department': 'Upload exam marks and academic performance data',
       'student': 'View your own academic records and action history',
+      'parent': 'Monitor your child\'s progress and approve actions',
       'local-guardian': 'Monitor your ward\'s progress and approve actions'
     };
     return descriptions[role] || '';
@@ -143,6 +148,7 @@ const Signup = () => {
                 className="block w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
               >
                 <option value="student">Student</option>
+                <option value="parent">Parent</option>
                 <option value="local-guardian">Local Guardian</option>
                 <option value="faculty">Faculty</option>
                 <option value="exam-department">Exam Department</option>
@@ -218,10 +224,10 @@ const Signup = () => {
             </div>
 
             {/* Student ID / Ward Student ID */}
-            {(formData.role === 'student' || formData.role === 'local-guardian') && (
+            {(formData.role === 'student' || formData.role === 'parent' || formData.role === 'local-guardian') && (
               <div>
-                <label htmlFor={formData.role === 'student' ? 'student_id' : 'ward_student_id'} className="block text-sm font-medium text-gray-700 mb-2">
-                  {formData.role === 'student' ? 'Student ID' : 'Ward Student ID'}
+                <label htmlFor={formData.role === 'student' || formData.role === 'parent' ? 'student_id' : 'ward_student_id'} className="block text-sm font-medium text-gray-700 mb-2">
+                  {formData.role === 'student' ? 'Student ID' : formData.role === 'parent' ? 'Child\'s Student ID' : 'Ward Student ID'}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -230,23 +236,23 @@ const Signup = () => {
                     </svg>
                   </div>
                   <input
-                    id={formData.role === 'student' ? 'student_id' : 'ward_student_id'}
-                    name={formData.role === 'student' ? 'student_id' : 'ward_student_id'}
+                    id={formData.role === 'student' || formData.role === 'parent' ? 'student_id' : 'ward_student_id'}
+                    name={formData.role === 'student' || formData.role === 'parent' ? 'student_id' : 'ward_student_id'}
                     type="text"
-                    value={formData.role === 'student' ? formData.student_id : formData.ward_student_id}
+                    value={formData.role === 'student' || formData.role === 'parent' ? formData.student_id : formData.ward_student_id}
                     onChange={handleChange}
                     className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 ${
-                      errors[formData.role === 'student' ? 'student_id' : 'ward_student_id'] ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      errors[formData.role === 'student' || formData.role === 'parent' ? 'student_id' : 'ward_student_id'] ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
                     }`}
-                    placeholder={`Enter ${formData.role === 'student' ? 'your' : 'your ward\'s'} student ID`}
+                    placeholder={`Enter ${formData.role === 'student' ? 'your' : formData.role === 'parent' ? 'your child\'s' : 'your ward\'s'} student ID`}
                   />
                 </div>
-                {errors[formData.role === 'student' ? 'student_id' : 'ward_student_id'] && (
+                {errors[formData.role === 'student' || formData.role === 'parent' ? 'student_id' : 'ward_student_id'] && (
                   <p className="mt-2 text-sm text-red-600 flex items-center">
                     <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                     </svg>
-                    {errors[formData.role === 'student' ? 'student_id' : 'ward_student_id']}
+                    {errors[formData.role === 'student' || formData.role === 'parent' ? 'student_id' : 'ward_student_id']}
                   </p>
                 )}
               </div>

@@ -2,13 +2,15 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useStudents } from '../../context/StudentContext';
-import { RefreshCw, Upload, FileText, Users, DollarSign, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
-import ModalUserMenu from '../ModalUserMenu';
+import { api } from '../../api/api';
+import { RefreshCw, Upload, FileText, Users, DollarSign, AlertTriangle, CheckCircle, Clock, Trash2, ArrowRight } from 'lucide-react';
+import Navbar from '../Navbar';
 import FeesUpload from '../FeesUpload';
 
 const GuardianDashboard = () => {
   const { user } = useAuth();
-  const { students, loading, error, actions } = useStudents();
+  const { state, actions } = useStudents();
+  const { students, loading, error } = state;
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
@@ -25,7 +27,7 @@ const GuardianDashboard = () => {
     setLocalLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/students', {
+      const response = await fetch('http://localhost:3001/api/students', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -86,8 +88,47 @@ const GuardianDashboard = () => {
     }
   }, [actions, fetchStudentsDirect]);
 
+  const handleDeleteAllFeesData = async () => {
+    if (!confirm('Are you sure you want to delete ALL fees data for ALL students? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      // Get all students first
+      const allStudents = localStudents.length > 0 ? localStudents : (students || []);
+      
+      if (allStudents.length === 0) {
+        alert('No students found to delete data from.');
+        return;
+      }
+
+      // Delete fees data for each student
+      const deletePromises = allStudents.map(student => 
+        api.deleteFeesData(student.student_id)
+      );
+
+      await Promise.all(deletePromises);
+      
+      alert(`Successfully deleted fees data for ${allStudents.length} students.`);
+      
+      // Refresh the data
+      handleRefresh();
+    } catch (error) {
+      console.error('Error deleting all fees data:', error);
+      alert('Error occurred while deleting fees data. Please try again.');
+    }
+  };
+
   const handleUploadSuccess = () => {
     handleRefresh();
+    setShowUpload(false);
+  };
+
+  const handleShowUpload = () => {
+    setShowUpload(true);
+  };
+
+  const handleCloseUpload = () => {
     setShowUpload(false);
   };
 
@@ -131,45 +172,23 @@ const GuardianDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-indigo-100">
-      {/* Header */}
-      <div className="bg-white/80 backdrop-blur-sm shadow-lg border-b border-gray-200">
-        <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center">
-            <Link to="/" className="group">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 group-hover:text-green-600 transition-colors duration-300">
-                  Local Guardian Dashboard
-                </h1>
-                <p className="text-gray-600 group-hover:text-gray-700 transition-colors duration-300">
-                  Welcome back, {user.username}
-                </p>
-                <p className="text-sm text-gray-500 group-hover:text-gray-600 transition-colors duration-300">
-                  Finance Department - Manage Student Fees
-                </p>
-              </div>
-            </Link>
-            <div className="flex items-center space-x-4 animate-fade-in-up">
-              <button
-                onClick={handleRefresh}
-                className="group flex items-center space-x-2 px-3 py-2 text-gray-700 bg-white hover:bg-gray-100 rounded-lg text-sm font-medium transition-all duration-300 transform hover:scale-105 border border-gray-200 shadow-md hover:shadow-lg"
-              >
-                <RefreshCw className={`w-4 h-4 group-hover:rotate-180 transition-transform duration-500 ${displayLoading ? 'animate-spin' : ''}`} />
-                <span>Refresh</span>
-              </button>
-              <div className="flex items-center space-x-3 bg-white rounded-xl px-4 py-2 border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-                <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center shadow-md ring-1 ring-white/50">
-                  <span className="text-white font-bold text-sm">{user.username?.charAt(0)?.toUpperCase() || 'G'}</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-black font-semibold text-sm">{user.username}</span>
-                  <span className="text-gray-600 text-xs capitalize">{user.role?.replace('-', ' ')}</span>
-                </div>
-                <ModalUserMenu />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Modern Navbar */}
+      <Navbar
+        title="Local Guardian Dashboard"
+        subtitle={`Welcome back, ${user.username}`}
+        icon={DollarSign}
+        onRefresh={handleRefresh}
+        isLoading={displayLoading}
+        additionalActions={
+          <button
+            onClick={handleShowUpload}
+            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+          >
+            <Upload className="w-4 h-4" />
+            <span className="hidden sm:inline">Upload Fees</span>
+          </button>
+        }
+      />
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -295,6 +314,7 @@ const GuardianDashboard = () => {
           )}
         </div>
 
+
         {/* Search and Filter */}
         <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20 mb-8">
           <div className="flex flex-col sm:flex-row gap-4">
@@ -379,6 +399,17 @@ const GuardianDashboard = () => {
               </tbody>
             </table>
           </div>
+        </div>
+
+        {/* Delete All Fees Data Button */}
+        <div className="mt-6 flex justify-center">
+          <button
+            onClick={() => handleDeleteAllFeesData()}
+            className="group relative inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white text-sm font-medium rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            <span>Delete All Fees Data</span>
+          </button>
         </div>
       </div>
 
