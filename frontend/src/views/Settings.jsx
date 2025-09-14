@@ -49,12 +49,19 @@ const Settings = () => {
     failingHigh: 2,
     failingMedium: 1,
     overdueDays: 30,
-    maxAttempts: 3,
     institutionName: "Student eSeva Institution",
     academicYear: new Date().getFullYear().toString(),
     semester: "1",
     emailNotifications: true,
     smsNotifications: false,
+    emailStudentRiskLevels: ["medium", "high"],
+    emailParentRiskLevels: ["medium", "high"],
+    emailFrequency: "immediate",
+    includeDetailedGrades: true,
+    includeRecommendations: true,
+    attendanceWeight: 0.4,
+    academicWeight: 0.4,
+    financialWeight: 0.2,
   });
 
   const [saving, setSaving] = useState(false);
@@ -64,10 +71,13 @@ const Settings = () => {
 
   // Load config into form when it changes
   useEffect(() => {
-    if (config) {
-      setFormData(config);
+    if (config && !loading) {
+      setFormData(prevData => ({
+        ...prevData,
+        ...config
+      }));
     }
-  }, [config]);
+  }, [config, loading]);
 
   // Fetch config when component mounts
   useEffect(() => {
@@ -209,8 +219,8 @@ const Settings = () => {
     },
     {
       id: 'financial',
-      title: 'Financial & Attempt Limits',
-      description: 'Set thresholds for fee payments and subject attempts',
+      title: 'Financial Settings',
+      description: 'Set thresholds for fee payments and financial risk assessment',
       icon: DollarSign,
       color: 'from-yellow-500 to-orange-500',
       bgColor: 'from-yellow-50 to-orange-50',
@@ -222,16 +232,6 @@ const Settings = () => {
           type: 'number',
           min: 1,
           max: 365,
-          riskLevel: 'HIGH',
-          riskColor: 'text-red-600'
-        },
-        {
-          key: 'maxAttempts',
-          label: 'Max Subject Attempts',
-          description: 'Students who exhaust attempts → HIGH RISK',
-          type: 'number',
-          min: 1,
-          max: 10,
           riskLevel: 'HIGH',
           riskColor: 'text-red-600'
         }
@@ -310,6 +310,18 @@ const Settings = () => {
       ]
     }
   ];
+
+  // Show loading state while config is being fetched
+  if (loading || !config) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-white mx-auto mb-4"></div>
+          <p className="text-white text-xl">Loading configuration...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 overflow-hidden">
@@ -427,7 +439,7 @@ const Settings = () => {
                           <div className="relative">
                             {field.type === 'select' ? (
                               <select
-                                value={formData[field.key]}
+                                value={formData[field.key] || ''}
                                 onChange={(e) => handleInputChange(field.key, e.target.value)}
                                 className="w-full px-6 py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white text-xl font-semibold focus:ring-4 focus:ring-white/30 focus:border-transparent transition-all duration-300 appearance-none"
                               >
@@ -441,7 +453,7 @@ const Settings = () => {
                               <div className="flex items-center space-x-4">
                                 <input
                                   type="checkbox"
-                                  checked={formData[field.key]}
+                                  checked={formData[field.key] || false}
                                   onChange={(e) => handleInputChange(field.key, e.target.checked)}
                                   className="w-6 h-6 text-blue-600 bg-white/10 border-white/20 rounded focus:ring-4 focus:ring-white/30"
                                 />
@@ -455,7 +467,7 @@ const Settings = () => {
                                 min={field.min}
                                 max={field.max}
                                 step={field.step}
-                                value={formData[field.key]}
+                                value={formData[field.key] || ''}
                                 onChange={(e) => handleInputChange(field.key, e.target.value)}
                                 className="w-full px-6 py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white text-xl font-semibold focus:ring-4 focus:ring-white/30 focus:border-transparent transition-all duration-300 placeholder-white/50"
                                 placeholder={`Enter ${field.label.toLowerCase()}`}
@@ -509,19 +521,15 @@ const Settings = () => {
                   <div className="space-y-3">
                     <div className="flex items-center space-x-2 text-red-200">
                       <Users className="w-4 h-4" />
-                      <span>Attendance ≤ {formData.attendanceCritical}%</span>
+                      <span>Attendance ≤ {formData.attendanceCritical || 0}%</span>
                     </div>
                     <div className="flex items-center space-x-2 text-red-200">
                       <BookOpen className="w-4 h-4" />
-                      <span>{formData.failingHigh}+ subjects failing</span>
+                      <span>{formData.failingHigh || 0}+ subjects failing</span>
                     </div>
                     <div className="flex items-center space-x-2 text-red-200">
                       <DollarSign className="w-4 h-4" />
-                      <span>Fees overdue {formData.overdueDays}+ days</span>
-                    </div>
-                    <div className="flex items-center space-x-2 text-red-200">
-                      <Target className="w-4 h-4" />
-                      <span>Exhausted {formData.maxAttempts} attempts</span>
+                      <span>Fees overdue {formData.overdueDays || 0}+ days</span>
                     </div>
                   </div>
                 </div>
@@ -537,11 +545,11 @@ const Settings = () => {
                   <div className="space-y-3">
                     <div className="flex items-center space-x-2 text-yellow-200">
                       <Users className="w-4 h-4" />
-                      <span>Attendance {formData.attendanceCritical + 0.1}-{formData.attendanceWarning}%</span>
+                      <span>Attendance {(formData.attendanceCritical || 0) + 1}-{formData.attendanceWarning || 0}%</span>
                     </div>
                     <div className="flex items-center space-x-2 text-yellow-200">
                       <BookOpen className="w-4 h-4" />
-                      <span>{formData.failingMedium} subject failing</span>
+                      <span>{formData.failingMedium || 0} subject failing</span>
                     </div>
                     <div className="flex items-center space-x-2 text-yellow-200">
                       <DollarSign className="w-4 h-4" />
@@ -565,7 +573,7 @@ const Settings = () => {
                   <div className="space-y-3">
                     <div className="flex items-center space-x-2 text-green-200">
                       <Users className="w-4 h-4" />
-                      <span>Attendance &gt; {formData.attendanceWarning}%</span>
+                      <span>Attendance &gt; {formData.attendanceWarning || 0}%</span>
                     </div>
                     <div className="flex items-center space-x-2 text-green-200">
                       <BookOpen className="w-4 h-4" />

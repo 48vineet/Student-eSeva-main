@@ -80,7 +80,7 @@ const FacultyDashboard = () => {
     try {
       setLocalLoading(true);
       const response = await api.getStudents();
-      setLocalStudents(response.students || []);
+      setLocalStudents(response.data.students || []);
     } catch (error) {
       console.error('Direct fetch error:', error);
     } finally {
@@ -165,8 +165,10 @@ const FacultyDashboard = () => {
   };
 
   const onUploadSuccess = () => {
+    console.log('🔄 Faculty upload success - refreshing data...');
     fetchStudentsDirect();
     refreshData();
+    console.log('✅ Faculty upload data refresh completed');
   };
 
 
@@ -575,6 +577,7 @@ const FacultyDashboard = () => {
       {showModal && selectedStudent && (
         <StudentDetailsModal
           student={selectedStudent}
+          isOpen={showModal}
           onClose={handleCloseModal}
           showActions={true}
         />

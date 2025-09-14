@@ -60,7 +60,7 @@ const ExamDepartmentDashboard = () => {
       console.log('Fetching students directly...');
       const response = await api.getStudents();
       console.log('Direct fetch response:', response);
-      setLocalStudents(response.students || []);
+      setLocalStudents(response.data.students || []);
     } catch (error) {
       console.error('Direct fetch error:', error);
     } finally {
@@ -618,10 +618,12 @@ const ExamDepartmentDashboard = () => {
               <ExamDataUpload 
                 onClose={() => setShowUpload(false)} 
                 onUploadSuccess={() => {
+                  console.log('🔄 Exam upload success - refreshing data...');
                   // Refresh the data after successful upload
                   fetchStudentsDirect();
                   refreshData();
                   setShowUpload(false); // Close the modal
+                  console.log('✅ Exam upload data refresh completed');
                 }}
               />
             </div>
@@ -633,6 +635,7 @@ const ExamDepartmentDashboard = () => {
       {showModal && selectedStudent && (
         <StudentDetailsModal
           student={selectedStudent}
+          isOpen={showModal}
           onClose={handleCloseModal}
           showActions={true}
         />

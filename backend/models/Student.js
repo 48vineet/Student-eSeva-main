@@ -110,6 +110,7 @@ const StudentSchema = new mongoose.Schema(
     risk_factors: [String],
     explanation: [String],
     recommendations: [RecommendationSchema],
+    failed_subjects: { type: Number, default: 0 },
     // Action tracking for parent/guardian approval workflow
     actions: [ActionSchema],
     // Data completion tracking

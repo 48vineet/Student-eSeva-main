@@ -1,5 +1,4 @@
 import React, { useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import { X, User, Mail, Phone, Calendar, AlertTriangle, TrendingUp, BookOpen, DollarSign, Clock, CheckCircle, XCircle } from 'lucide-react';
 
 const StudentDetailsModal = ({ student, isOpen, onClose, showActions = true }) => {
@@ -23,7 +22,9 @@ const StudentDetailsModal = ({ student, isOpen, onClose, showActions = true }) =
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen || !student) return null;
+  if (!isOpen || !student) {
+    return null;
+  }
 
   const getRiskColor = (level) => {
     switch (level) {
@@ -67,24 +68,97 @@ const StudentDetailsModal = ({ student, isOpen, onClose, showActions = true }) =
     return factorMap[factor] || factor.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   }) || [];
 
-  // Calculate failed subjects from grades array
-  const failedSubjects = student.grades ? student.grades.filter(grade => grade.status === 'failing').length : 0;
+  // Helper function to get all grades from detailed fields
+  const getAllGradesFromDetailedFields = (student) => {
+    const allGrades = [];
+    const gradeFields = [
+      'unit_test_1_grades', 'unit_test_2_grades', 'mid_sem_grades', 'end_sem_grades'
+    ];
+    gradeFields.forEach(field => {
+      if (student[field] && Array.isArray(student[field])) {
+        student[field].forEach(grade => {
+          if (grade.subject) {
+            const examType = field.replace('_grades', '');
+            let score = 0;
+            let hasScore = false;
+            
+            // Extract score based on exam type
+            if (examType === 'unit_test_1' && grade.unit_test_1 !== undefined) {
+              score = grade.unit_test_1;
+              hasScore = true;
+            } else if (examType === 'unit_test_2' && grade.unit_test_2 !== undefined) {
+              score = grade.unit_test_2;
+              hasScore = true;
+            } else if (examType === 'mid_sem' && grade.mid_sem !== undefined) {
+              score = grade.mid_sem;
+              hasScore = true;
+            } else if (examType === 'end_sem' && grade.end_sem !== undefined) {
+              score = grade.end_sem;
+              hasScore = true;
+            } else if (grade.score !== undefined) {
+              // Fallback to old score field
+              score = grade.score;
+              hasScore = true;
+            }
+            
+            allGrades.push({ 
+              subject: grade.subject, 
+              score: score, 
+              examType: examType,
+              status: score < 36 ? 'failing' : 'passing',
+              hasScore: hasScore
+            });
+          }
+        });
+      }
+    });
+    // Fallback to old grades array if detailed fields are empty
+    if (allGrades.length === 0 && student.grades && Array.isArray(student.grades)) {
+      student.grades.forEach(grade => {
+        if (grade.subject) {
+          allGrades.push({ 
+            subject: grade.subject, 
+            score: grade.score || 0, 
+            examType: 'basic',
+            status: (grade.score || 0) < 36 ? 'failing' : 'passing',
+            hasScore: grade.score !== undefined && grade.score !== null
+          });
+        }
+      });
+    }
+    return allGrades;
+  };
+
+  // Get all grades from detailed fields
+  const allGrades = getAllGradesFromDetailedFields(student);
   
-  // Calculate GPA from grades
-  const gpa = student.grades && student.grades.length > 0 
-    ? (student.grades.reduce((sum, grade) => sum + grade.score, 0) / student.grades.length).toFixed(2)
+  // Calculate failed subjects from all grades
+  const failedSubjects = allGrades.filter(grade => grade.status === 'failing').length;
+  
+  // Calculate GPA from all grades
+  const gpa = allGrades.length > 0 
+    ? (allGrades.reduce((sum, grade) => sum + grade.score, 0) / allGrades.length).toFixed(2)
     : 'N/A';
 
-  return createPortal(
-    <div className="modal-overlay p-4">
+  // Group grades by exam type
+  const gradesByExamType = allGrades.reduce((acc, grade) => {
+    if (!acc[grade.examType]) {
+      acc[grade.examType] = [];
+    }
+    acc[grade.examType].push(grade);
+    return acc;
+  }, {});
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50" style={{zIndex: 9999}}>
       {/* Background Blur Overlay */}
       <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-custom"
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
       
       {/* Modal Content */}
-      <div className="relative w-full max-w-4xl max-h-[80vh] bg-white rounded-2xl shadow-2xl overflow-hidden animate-modal-in transform transition-all duration-300 ease-out student-modal">
+      <div className="relative w-full max-w-4xl max-h-[80vh] bg-white rounded-2xl shadow-2xl overflow-hidden animate-modal-in transform transition-all duration-300 ease-out" style={{zIndex: 10000}}>
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-3 sm:p-4">
           <div className="flex items-center justify-between">
@@ -190,30 +264,46 @@ const StudentDetailsModal = ({ student, isOpen, onClose, showActions = true }) =
                   </div>
                 </div>
                 
-                {/* Subject Grades */}
-                {student.grades && student.grades.length > 0 && (
+                {/* Detailed Exam Grades */}
+                {allGrades.length > 0 && (
                   <div className="mt-4">
-                    <h4 className="text-sm font-semibold text-blue-700 mb-2">Subject Grades:</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {student.grades.map((grade, index) => (
-                        <div 
-                          key={index}
-                          className={`flex justify-between items-center p-2 rounded-lg text-sm ${
-                            grade.status === 'failing' 
-                              ? 'bg-red-100 text-red-800 border border-red-200' 
-                              : 'bg-green-100 text-green-800 border border-green-200'
-                          }`}
-                        >
-                          <span className="font-medium">{grade.subject}</span>
-                          <div className="flex items-center space-x-2">
-                            <span className="font-bold">{grade.score}</span>
-                            <span className={`text-xs px-2 py-1 rounded-full ${
-                              grade.status === 'failing' 
-                                ? 'bg-red-200 text-red-700' 
-                                : 'bg-green-200 text-green-700'
-                            }`}>
-                              {grade.status === 'failing' ? 'FAIL' : 'PASS'}
-                            </span>
+                    <h4 className="text-sm font-semibold text-blue-700 mb-3">Detailed Exam Results:</h4>
+                    <div className="space-y-4">
+                      {Object.entries(gradesByExamType).map(([examType, grades]) => (
+                        <div key={examType} className="bg-white p-3 rounded-lg border">
+                          <h5 className="text-xs font-semibold text-blue-600 mb-2 uppercase tracking-wide">
+                            {examType.replace(/_/g, ' ')} ({grades.length} subjects)
+                          </h5>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {grades.map((grade, index) => (
+                              <div 
+                                key={index}
+                                className={`flex justify-between items-center p-2 rounded-lg text-sm ${
+                                  grade.status === 'failing' 
+                                    ? 'bg-red-100 text-red-800 border border-red-200' 
+                                    : 'bg-green-100 text-green-800 border border-green-200'
+                                }`}
+                              >
+                                <span className="font-medium truncate">{grade.subject}</span>
+                                <div className="flex items-center space-x-2">
+                                  <span className="font-bold">
+                                    {grade.hasScore ? grade.score : 'No Score'}
+                                  </span>
+                                  <span className={`text-xs px-2 py-1 rounded-full ${
+                                    grade.hasScore 
+                                      ? (grade.status === 'failing' 
+                                          ? 'bg-red-200 text-red-700' 
+                                          : 'bg-green-200 text-green-700')
+                                      : 'bg-yellow-200 text-yellow-700'
+                                  }`}>
+                                    {grade.hasScore 
+                                      ? (grade.status === 'failing' ? 'FAIL' : 'PASS')
+                                      : 'PENDING'
+                                    }
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       ))}
@@ -232,18 +322,34 @@ const StudentDetailsModal = ({ student, isOpen, onClose, showActions = true }) =
                   <div className="flex justify-between items-center">
                     <span className="font-medium">Fee Status:</span>
                     <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      student.fee_status === 'current' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      student.fees_status === 'Complete' || student.fee_status === 'current' 
+                        ? 'bg-green-100 text-green-800' 
+                        : student.fees_status === 'Overdue' || student.fee_status === 'overdue'
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-yellow-100 text-yellow-800'
                     }`}>
-                      {student.fee_status || 'Unknown'}
+                      {student.fees_status || student.fee_status || 'Unknown'}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="font-medium">Days Overdue:</span>
-                    <span className="font-bold">{student.days_overdue || 0} days</span>
+                    <span className={`font-bold ${(student.days_overdue || 0) > 0 ? 'text-red-600' : 'text-gray-700'}`}>
+                      {student.days_overdue || 0} days
+                    </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="font-medium">Fees Due Days:</span>
-                    <span className="font-bold">{student.fees_due_days || 0} days</span>
+                    <span className="font-bold text-gray-700">{student.fees_due_days || 0} days</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium">Data Complete:</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      student.data_completion?.local_guardian 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {student.data_completion?.local_guardian ? 'Complete' : 'Pending'}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -271,6 +377,24 @@ const StudentDetailsModal = ({ student, isOpen, onClose, showActions = true }) =
                   <p className="text-gray-500 italic">No specific risk factors identified</p>
                 )}
               </div>
+
+              {/* Risk Explanation */}
+              {student.explanation && student.explanation.length > 0 && (
+                <div className="bg-orange-50 p-4 rounded-xl">
+                  <h3 className="text-lg font-semibold text-orange-800 mb-4 flex items-center">
+                    <AlertTriangle className="w-5 h-5 mr-2" />
+                    Risk Explanation
+                  </h3>
+                  <ul className="space-y-2">
+                    {student.explanation.map((explanation, index) => (
+                      <li key={index} className="flex items-start space-x-2">
+                        <span className="text-orange-500 mt-1">•</span>
+                        <span className="text-gray-700">{explanation}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {/* Recommendations */}
               <div className="bg-purple-50 p-4 rounded-xl">
@@ -308,6 +432,56 @@ const StudentDetailsModal = ({ student, isOpen, onClose, showActions = true }) =
                 )}
               </div>
 
+              {/* Data Completion Status */}
+              <div className="bg-indigo-50 p-4 rounded-xl">
+                <h3 className="text-lg font-semibold text-indigo-800 mb-4 flex items-center">
+                  <CheckCircle className="w-5 h-5 mr-2" />
+                  Data Completion Status
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium">Exam Department:</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      student.data_completion?.exam_department 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {student.data_completion?.exam_department ? 'Complete' : 'Pending'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium">Faculty (Attendance):</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      student.data_completion?.faculty 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {student.data_completion?.faculty ? 'Complete' : 'Pending'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium">Local Guardian (Fees):</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      student.data_completion?.local_guardian 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {student.data_completion?.local_guardian ? 'Complete' : 'Pending'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium">Overall Status:</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      student.data_complete 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {student.data_complete ? 'Complete' : 'Incomplete'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               {/* Additional Information */}
               <div className="bg-gray-50 p-4 rounded-xl">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
@@ -320,6 +494,10 @@ const StudentDetailsModal = ({ student, isOpen, onClose, showActions = true }) =
                     <span className="text-gray-700">{student.major || 'Not specified'}</span>
                   </div>
                   <div className="flex justify-between items-center">
+                    <span className="font-medium">Class Year:</span>
+                    <span className="text-gray-700">{student.class_year || 'Not specified'}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
                     <span className="font-medium">Last Updated:</span>
                     <span className="text-gray-700">{formatDate(student.last_updated)}</span>
                   </div>
@@ -330,23 +508,6 @@ const StudentDetailsModal = ({ student, isOpen, onClose, showActions = true }) =
                 </div>
               </div>
 
-              {/* Grades (if available) */}
-              {student.grades && student.grades.length > 0 && (
-                <div className="bg-indigo-50 p-4 rounded-xl">
-                  <h3 className="text-lg font-semibold text-indigo-800 mb-4 flex items-center">
-                    <BookOpen className="w-5 h-5 mr-2" />
-                    Recent Grades
-                  </h3>
-                  <div className="space-y-2">
-                    {student.grades.map((grade, index) => (
-                      <div key={index} className="flex justify-between items-center">
-                        <span className="font-medium">{grade.subject || `Subject ${index + 1}`}</span>
-                        <span className="font-bold text-indigo-600">{grade.score || 'N/A'}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -363,8 +524,7 @@ const StudentDetailsModal = ({ student, isOpen, onClose, showActions = true }) =
           </div>
         </div>
       </div>
-    </div>,
-    document.body
+    </div>
   );
 };
 

@@ -61,7 +61,6 @@ function parseCsv(buffer) {
       
       // Parse header row
       const headers = lines[0].split(',').map(h => h.trim());
-      
       // Parse data rows
       const results = [];
       for (let i = 1; i < lines.length; i++) {

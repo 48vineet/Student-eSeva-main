@@ -228,8 +228,13 @@ const StudentTable = ({ students, onStudentSelect, showActions = true, filterByA
               {currentStudents.map((student, index) => (
                 <tr 
                   key={student.student_id} 
-                  className="group hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 transform hover:scale-[1.01] animate-fade-in-up"
+                  className="group hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 transform hover:scale-[1.01] animate-fade-in-up cursor-pointer"
                   style={{animationDelay: `${index * 0.1}s`}}
+                  onClick={() => {
+                    if (onStudentSelect) {
+                      onStudentSelect(student);
+                    }
+                  }}
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">

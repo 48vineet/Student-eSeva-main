@@ -12,6 +12,7 @@ const {
   deleteFeesData,
   deleteStudentRecord,
   deleteAllStudentRecords,
+  recalculateAllRisks,
 } = require("../controllers/studentController");
 const { cleanupDuplicateStudents } = require("../controllers/uploadController");
 const { 
@@ -61,5 +62,8 @@ router.post("/cleanup-duplicates", authorize(["counselor"]), async (req, res, ne
     next(error);
   }
 });
+
+// Manual risk recalculation for all students (temporarily open for testing)
+router.post("/recalculate-all-risks", authorize(["counselor", "faculty", "exam-department", "local-guardian"]), recalculateAllRisks);
 
 module.exports = router;

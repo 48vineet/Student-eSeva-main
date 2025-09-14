@@ -75,8 +75,8 @@ const SignupPage = () => {
       newErrors.student_id = 'Student ID is required for student role';
     }
     
-    if (formData.role === 'parent' && !formData.student_id) {
-      newErrors.student_id = 'Student ID is required for parent role';
+    if (formData.role === 'parent' && !formData.ward_student_id) {
+      newErrors.ward_student_id = 'Ward Student ID is required for parent role';
     }
     
     if (formData.role === 'local-guardian' && !formData.ward_student_id) {
@@ -109,7 +109,7 @@ const SignupPage = () => {
     if (formData.role === 'student') {
       registrationData.student_id = formData.student_id;
     } else if (formData.role === 'parent') {
-      registrationData.student_id = formData.student_id;
+      registrationData.ward_student_id = formData.ward_student_id;
     } else if (formData.role === 'local-guardian') {
       registrationData.ward_student_id = formData.ward_student_id;
     } else if (formData.role === 'faculty') {
@@ -152,23 +152,23 @@ const SignupPage = () => {
       case 'parent':
         return (
           <div>
-            <label htmlFor="student_id" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="ward_student_id" className="block text-sm font-medium text-gray-700">
               Child's Student ID
             </label>
             <input
-              id="student_id"
-              name="student_id"
+              id="ward_student_id"
+              name="ward_student_id"
               type="text"
               required
               className={`mt-1 appearance-none relative block w-full px-3 py-2 border ${
-                errors.student_id ? 'border-red-300' : 'border-gray-300'
+                errors.ward_student_id ? 'border-red-300' : 'border-gray-300'
               } placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
               placeholder="Enter your child's Student ID"
-              value={formData.student_id}
+              value={formData.ward_student_id}
               onChange={handleChange}
             />
-            {errors.student_id && (
-              <p className="mt-1 text-sm text-red-600">{errors.student_id}</p>
+            {errors.ward_student_id && (
+              <p className="mt-1 text-sm text-red-600">{errors.ward_student_id}</p>
             )}
             <p className="mt-1 text-sm text-gray-500">
               Enter the Student ID of your child to manage their actions and progress.

@@ -2,6 +2,356 @@ const transporter = require("../config/mailer");
 const { emailConfig } = require("../config/env");
 
 /**
+ * Get responsive email styles for modern design
+ */
+function getResponsiveStyles() {
+  return `
+    <style>
+      /* Reset and base styles */
+      * { box-sizing: border-box; }
+      body { 
+        margin: 0; 
+        padding: 0; 
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        line-height: 1.6; 
+        color: #1f2937;
+        background-color: #f9fafb;
+      }
+      
+      /* Container and layout */
+      .email-container { 
+        max-width: 600px; 
+        margin: 0 auto; 
+        background-color: #ffffff;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      }
+      
+      /* Header styles */
+      .email-header { 
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white; 
+        padding: 32px 24px; 
+        text-align: center;
+        position: relative;
+      }
+      
+      .email-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+        opacity: 0.3;
+      }
+      
+      .email-header h1 { 
+        margin: 0 0 8px 0; 
+        font-size: 28px; 
+        font-weight: 700;
+        position: relative;
+        z-index: 1;
+      }
+      
+      .email-header p { 
+        margin: 0; 
+        font-size: 16px; 
+        opacity: 0.9;
+        position: relative;
+        z-index: 1;
+      }
+      
+      /* Content area */
+      .email-content { 
+        padding: 32px 24px; 
+      }
+      
+      /* Alert boxes */
+      .alert-box { 
+        padding: 24px; 
+        border-radius: 12px; 
+        margin: 24px 0;
+        border-left: 4px solid;
+        position: relative;
+        overflow: hidden;
+      }
+      
+      .alert-box::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        opacity: 0.05;
+        background: currentColor;
+      }
+      
+      .alert-box .content {
+        position: relative;
+        z-index: 1;
+      }
+      
+      .alert-high { 
+        background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+        border-left-color: #ef4444;
+        color: #991b1b;
+      }
+      
+      .alert-medium { 
+        background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+        border-left-color: #f59e0b;
+        color: #92400e;
+      }
+      
+      .alert-low { 
+        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        border-left-color: #22c55e;
+        color: #166534;
+      }
+      
+      .alert-info { 
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        border-left-color: #3b82f6;
+        color: #1e40af;
+      }
+      
+      /* Risk level badges */
+      .risk-badge { 
+        display: inline-block; 
+        padding: 8px 16px; 
+        border-radius: 20px; 
+        font-size: 14px; 
+        font-weight: 700; 
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      
+      .risk-high { background: #ef4444; color: white; }
+      .risk-medium { background: #f59e0b; color: white; }
+      .risk-low { background: #22c55e; color: white; }
+      
+      /* Stats grid */
+      .stats-grid { 
+        display: grid; 
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); 
+        gap: 16px; 
+        margin: 24px 0; 
+      }
+      
+      .stat-card { 
+        background: #f8fafc; 
+        padding: 20px; 
+        border-radius: 12px; 
+        text-align: center;
+        border: 1px solid #e2e8f0;
+        transition: transform 0.2s ease;
+      }
+      
+      .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+      
+      .stat-value { 
+        font-size: 32px; 
+        font-weight: 700; 
+        margin: 8px 0;
+        line-height: 1;
+      }
+      
+      .stat-label { 
+        font-size: 14px; 
+        color: #64748b; 
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      
+      /* Buttons */
+      .btn { 
+        display: inline-block; 
+        padding: 14px 28px; 
+        text-decoration: none; 
+        border-radius: 8px; 
+        font-weight: 600;
+        font-size: 16px;
+        text-align: center;
+        transition: all 0.2s ease;
+        border: none;
+        cursor: pointer;
+        margin: 8px;
+        min-width: 140px;
+      }
+      
+      .btn-primary { 
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        color: white; 
+        box-shadow: 0 4px 14px 0 rgba(59, 130, 246, 0.3);
+      }
+      
+      .btn-success { 
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white; 
+        box-shadow: 0 4px 14px 0 rgba(16, 185, 129, 0.3);
+      }
+      
+      .btn-danger { 
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white; 
+        box-shadow: 0 4px 14px 0 rgba(239, 68, 68, 0.3);
+      }
+      
+      .btn:hover { 
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px 0 rgba(0, 0, 0, 0.2);
+      }
+      
+      .btn-container { 
+        text-align: center; 
+        margin: 32px 0; 
+      }
+      
+      /* Lists */
+      .risk-factors { 
+        background: #f8fafc; 
+        padding: 20px; 
+        border-radius: 12px; 
+        margin: 20px 0;
+        border: 1px solid #e2e8f0;
+      }
+      
+      .risk-factors ul { 
+        margin: 0; 
+        padding-left: 20px; 
+      }
+      
+      .risk-factors li { 
+        margin: 8px 0; 
+        color: #374151;
+      }
+      
+      /* Recommendations */
+      .recommendations { 
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        border: 1px solid #93c5fd; 
+        padding: 24px; 
+        border-radius: 12px; 
+        margin: 24px 0; 
+      }
+      
+      .recommendations h4 {
+        color: #1e40af;
+        margin-top: 0;
+      }
+      
+      /* Footer */
+      .email-footer { 
+        background: #f8fafc; 
+        padding: 24px; 
+        text-align: center; 
+        border-top: 1px solid #e2e8f0;
+        color: #64748b;
+        font-size: 14px;
+      }
+      
+      .email-footer p { 
+        margin: 8px 0; 
+      }
+      
+      /* Mobile responsiveness */
+      @media only screen and (max-width: 600px) {
+        .email-container { 
+          margin: 0; 
+          border-radius: 0; 
+        }
+        
+        .email-header { 
+          padding: 24px 16px; 
+        }
+        
+        .email-header h1 { 
+          font-size: 24px; 
+        }
+        
+        .email-content { 
+          padding: 24px 16px; 
+        }
+        
+        .stats-grid { 
+          grid-template-columns: 1fr; 
+          gap: 12px; 
+        }
+        
+        .stat-card { 
+          padding: 16px; 
+        }
+        
+        .stat-value { 
+          font-size: 28px; 
+        }
+        
+        .btn { 
+          display: block; 
+          width: 100%; 
+          margin: 8px 0; 
+          padding: 16px 24px;
+        }
+        
+        .btn-container { 
+          margin: 24px 0; 
+        }
+        
+        .alert-box { 
+          padding: 20px; 
+          margin: 20px 0; 
+        }
+      }
+      
+      /* Dark mode support */
+      @media (prefers-color-scheme: dark) {
+        .email-container { 
+          background-color: #1f2937; 
+          color: #f9fafb; 
+        }
+        
+        .stat-card { 
+          background: #374151; 
+          border-color: #4b5563; 
+        }
+        
+        .risk-factors { 
+          background: #374151; 
+          border-color: #4b5563; 
+        }
+        
+        .email-footer { 
+          background: #111827; 
+          border-color: #374151; 
+        }
+      }
+      
+      /* Print styles */
+      @media print {
+        .email-container { 
+          box-shadow: none; 
+          border: 1px solid #e2e8f0; 
+        }
+        
+        .btn { 
+          background: #f3f4f6 !important; 
+          color: #374151 !important; 
+          border: 1px solid #d1d5db !important;
+        }
+      }
+    </style>
+  `;
+}
+
+/**
  * Send an email
  * @param {string|Object} to Recipient email or email data object
  * @param {string} subject Email subject (if to is string)
@@ -40,58 +390,62 @@ async function sendEmail(to, subject, html) {
  */
 async function sendActionApprovalEmail(action, student, parentEmail) {
   const subject = `Action Required: ${action.description}`;
+  const priorityClass = action.priority === 'high' ? 'alert-high' : action.priority === 'medium' ? 'alert-medium' : 'alert-low';
+  const priorityIcon = action.priority === 'high' ? '🚨' : action.priority === 'medium' ? '⚠️' : 'ℹ️';
   
   const html = `
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Action Approval Required</title>
-      <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-        .content { background: #fff; padding: 20px; border: 1px solid #e9ecef; border-radius: 8px; }
-        .action-box { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 15px 0; }
-        .priority-high { border-left: 4px solid #dc3545; }
-        .priority-medium { border-left: 4px solid #ffc107; }
-        .priority-low { border-left: 4px solid #28a745; }
-        .btn { display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; margin: 10px 5px; }
-        .btn-danger { background: #dc3545; }
-        .footer { margin-top: 20px; padding-top: 20px; border-top: 1px solid #e9ecef; font-size: 12px; color: #6c757d; }
-      </style>
+      ${getResponsiveStyles()}
     </head>
     <body>
-      <div class="container">
-        <div class="header">
-          <h2>Student Early Warning System</h2>
-          <p>Action Approval Required for ${student.name}</p>
+      <div class="email-container">
+        <div class="email-header">
+          <h1>📋 Action Approval Required</h1>
+          <p>Student: ${student.name} (ID: ${student.student_id})</p>
         </div>
         
-        <div class="content">
-          <h3>Dear Parent/Guardian,</h3>
+        <div class="email-content">
+          <h2>Dear Parent/Guardian,</h2>
           
-          <p>A new action has been recommended for your ward <strong>${student.name}</strong> (Student ID: ${student.student_id}) and requires your approval.</p>
+          <p>A new action has been recommended for your ward and requires your approval. Please review the details below carefully.</p>
           
-          <div class="action-box priority-${action.priority}">
-            <h4>Action Details:</h4>
-            <p><strong>Description:</strong> ${action.description}</p>
-            <p><strong>Counselor Notes:</strong> ${action.counselor_notes}</p>
-            <p><strong>Priority:</strong> <span style="text-transform: capitalize;">${action.priority}</span></p>
-            ${action.due_date ? `<p><strong>Due Date:</strong> ${new Date(action.due_date).toLocaleDateString()}</p>` : ''}
+          <div class="alert-box ${priorityClass}">
+            <div class="content">
+              <h3>${priorityIcon} Action Details</h3>
+              <p><strong>Description:</strong> ${action.description}</p>
+              <p><strong>Counselor Notes:</strong> ${action.counselor_notes}</p>
+              <p><strong>Priority:</strong> <span class="risk-badge risk-${action.priority}">${action.priority.toUpperCase()}</span></p>
+              ${action.due_date ? `<p><strong>Due Date:</strong> ${new Date(action.due_date).toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })}</p>` : ''}
+            </div>
           </div>
           
-          <p>Please log in to the system to review and approve or reject this action:</p>
-          
-          <div style="text-align: center; margin: 20px 0;">
-            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/login" class="btn">Login to Review Action</a>
+          <div class="btn-container">
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/login" class="btn btn-primary">
+              🔍 Review Action
+            </a>
           </div>
           
-          <p><strong>Note:</strong> This action is currently pending your approval. Please review it carefully and take appropriate action.</p>
+          <div class="alert-box alert-info">
+            <div class="content">
+              <h4>📝 Important Note</h4>
+              <p>This action is currently pending your approval. Please review it carefully and take appropriate action as soon as possible.</p>
+            </div>
+          </div>
         </div>
         
-        <div class="footer">
-          <p>This is an automated message from the Student Early Warning System. Please do not reply to this email.</p>
+        <div class="email-footer">
+          <p><strong>Student eSeva System</strong></p>
+          <p>This is an automated message. Please do not reply to this email.</p>
           <p>If you have any questions, please contact the counseling department.</p>
         </div>
       </div>
@@ -110,49 +464,64 @@ async function sendActionApprovalEmail(action, student, parentEmail) {
  */
 async function sendActionStatusUpdateEmail(action, student, counselorEmail) {
   const subject = `Action ${action.status}: ${action.description}`;
+  const statusClass = action.status === 'approved' ? 'alert-low' : 'alert-high';
+  const statusIcon = action.status === 'approved' ? '✅' : '❌';
   
   const html = `
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Action Status Update</title>
-      <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-        .content { background: #fff; padding: 20px; border: 1px solid #e9ecef; border-radius: 8px; }
-        .status-approved { color: #28a745; font-weight: bold; }
-        .status-rejected { color: #dc3545; font-weight: bold; }
-        .action-box { background: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; border-radius: 5px; margin: 15px 0; }
-        .footer { margin-top: 20px; padding-top: 20px; border-top: 1px solid #e9ecef; font-size: 12px; color: #6c757d; }
-      </style>
+      ${getResponsiveStyles()}
     </head>
     <body>
-      <div class="container">
-        <div class="header">
-          <h2>Student Early Warning System</h2>
-          <p>Action Status Update</p>
+      <div class="email-container">
+        <div class="email-header">
+          <h1>📋 Action Status Update</h1>
+          <p>Student: ${student.name} (ID: ${student.student_id})</p>
         </div>
         
-        <div class="content">
-          <h3>Dear Counselor,</h3>
+        <div class="email-content">
+          <h2>Dear Counselor,</h2>
           
-          <p>The following action for student <strong>${student.name}</strong> (Student ID: ${student.student_id}) has been <span class="status-${action.status}">${action.status}</span> by the parent/guardian.</p>
+          <p>The following action for student <strong>${student.name}</strong> has been <span class="risk-badge risk-${action.status === 'approved' ? 'low' : 'high'}">${action.status.toUpperCase()}</span> by the parent/guardian.</p>
           
-          <div class="action-box">
-            <h4>Action Details:</h4>
-            <p><strong>Description:</strong> ${action.description}</p>
-            <p><strong>Status:</strong> <span class="status-${action.status}">${action.status.toUpperCase()}</span></p>
-            <p><strong>Updated:</strong> ${new Date(action.last_updated).toLocaleString()}</p>
-            ${action.rejection_reason ? `<p><strong>Rejection Reason:</strong> ${action.rejection_reason}</p>` : ''}
+          <div class="alert-box ${statusClass}">
+            <div class="content">
+              <h3>${statusIcon} Action Details</h3>
+              <p><strong>Description:</strong> ${action.description}</p>
+              <p><strong>Status:</strong> <span class="risk-badge risk-${action.status === 'approved' ? 'low' : 'high'}">${action.status.toUpperCase()}</span></p>
+              <p><strong>Updated:</strong> ${new Date(action.last_updated).toLocaleString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}</p>
+              ${action.rejection_reason ? `<p><strong>Rejection Reason:</strong> ${action.rejection_reason}</p>` : ''}
+            </div>
           </div>
           
-          <p>Please log in to the system to view the complete details and take any necessary follow-up actions.</p>
+          <div class="btn-container">
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/login" class="btn btn-primary">
+              📊 View Complete Details
+            </a>
+          </div>
+          
+          <div class="alert-box alert-info">
+            <div class="content">
+              <h4>📝 Next Steps</h4>
+              <p>Please log in to the system to view the complete details and take any necessary follow-up actions based on the parent/guardian's response.</p>
+            </div>
+          </div>
         </div>
         
-        <div class="footer">
-          <p>This is an automated message from the Student Early Warning System. Please do not reply to this email.</p>
+        <div class="email-footer">
+          <p><strong>Student eSeva System</strong></p>
+          <p>This is an automated message. Please do not reply to this email.</p>
         </div>
       </div>
     </body>
@@ -170,7 +539,8 @@ async function sendActionStatusUpdateEmail(action, student, counselorEmail) {
  */
 async function sendEnhancedRiskNotificationEmail(student, recipientEmail, recipientType = 'parent') {
   const riskLevel = student.risk_level;
-  const riskColor = riskLevel === 'high' ? '#dc3545' : riskLevel === 'medium' ? '#ffc107' : '#28a745';
+  const riskClass = riskLevel === 'high' ? 'alert-high' : riskLevel === 'medium' ? 'alert-medium' : 'alert-low';
+  const riskIcon = riskLevel === 'high' ? '🚨' : riskLevel === 'medium' ? '⚠️' : '✅';
   
   const subject = `Student Risk Alert: ${student.name} - ${riskLevel.toUpperCase()} RISK`;
   
@@ -179,66 +549,86 @@ async function sendEnhancedRiskNotificationEmail(student, recipientEmail, recipi
     <html>
     <head>
       <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Student Risk Alert</title>
-      <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-        .content { background: #fff; padding: 20px; border: 1px solid #e9ecef; border-radius: 8px; }
-        .risk-alert { background: ${riskColor}15; border: 2px solid ${riskColor}; padding: 20px; border-radius: 8px; margin: 20px 0; }
-        .risk-level { color: ${riskColor}; font-size: 24px; font-weight: bold; text-transform: uppercase; }
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0; }
-        .stat-box { background: #f8f9fa; padding: 15px; border-radius: 5px; text-align: center; }
-        .recommendations { background: #e3f2fd; border: 1px solid #bbdefb; padding: 15px; border-radius: 5px; margin: 15px 0; }
-        .footer { margin-top: 20px; padding-top: 20px; border-top: 1px solid #e9ecef; font-size: 12px; color: #6c757d; }
-      </style>
+      ${getResponsiveStyles()}
     </head>
     <body>
-      <div class="container">
-        <div class="header">
-          <h2>Student Early Warning System</h2>
-          <p>Risk Assessment Alert</p>
+      <div class="email-container">
+        <div class="email-header">
+          <h1>${riskIcon} Risk Assessment Alert</h1>
+          <p>Student: ${student.name} (ID: ${student.student_id})</p>
         </div>
         
-        <div class="content">
-          <div class="risk-alert">
-            <h2 class="risk-level">${riskLevel} Risk</h2>
-            <p><strong>Student:</strong> ${student.name} (ID: ${student.student_id})</p>
-            <p><strong>Risk Score:</strong> ${student.risk_score}/100</p>
+        <div class="email-content">
+          <div class="alert-box ${riskClass}">
+            <div class="content">
+              <h2>${riskIcon} ${riskLevel.toUpperCase()} RISK</h2>
+              <p><strong>Risk Score:</strong> ${student.risk_score}/100</p>
+              <p><strong>Assessment Date:</strong> ${new Date().toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })}</p>
+            </div>
           </div>
           
           <div class="stats-grid">
-            <div class="stat-box">
-              <h4>Attendance</h4>
-              <p style="font-size: 24px; font-weight: bold; color: ${student.attendance_rate < 75 ? '#dc3545' : student.attendance_rate < 85 ? '#ffc107' : '#28a745'};">${student.attendance_rate}%</p>
+            <div class="stat-card">
+              <div class="stat-label">Attendance Rate</div>
+              <div class="stat-value" style="color: ${student.attendance_rate < 75 ? '#ef4444' : student.attendance_rate < 85 ? '#f59e0b' : '#22c55e'};">
+                ${student.attendance_rate}%
+              </div>
             </div>
-            <div class="stat-box">
-              <h4>Fee Status</h4>
-              <p style="font-size: 18px; font-weight: bold; color: ${student.fee_status === 'overdue' ? '#dc3545' : student.fee_status === 'pending' ? '#ffc107' : '#28a745'};">${student.fee_status}</p>
+            <div class="stat-card">
+              <div class="stat-label">Failed Subjects</div>
+              <div class="stat-value" style="color: ${student.failed_subjects > 2 ? '#ef4444' : student.failed_subjects > 0 ? '#f59e0b' : '#22c55e'};">
+                ${student.failed_subjects || 0}
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Days Overdue</div>
+              <div class="stat-value" style="color: ${student.days_overdue > 30 ? '#ef4444' : student.days_overdue > 0 ? '#f59e0b' : '#22c55e'};">
+                ${student.days_overdue || 0}
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Fee Status</div>
+              <div class="stat-value" style="color: ${student.fee_status === 'overdue' ? '#ef4444' : student.fee_status === 'pending' ? '#f59e0b' : '#22c55e'}; font-size: 18px;">
+                ${student.fee_status || 'Unknown'}
+              </div>
             </div>
           </div>
           
           ${student.risk_factors && student.risk_factors.length > 0 ? `
-            <h4>Risk Factors Identified:</h4>
-            <ul>
-              ${student.risk_factors.map(factor => `<li>${factor.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</li>`).join('')}
-            </ul>
+            <div class="risk-factors">
+              <h4>🔍 Risk Factors Identified</h4>
+              <ul>
+                ${student.risk_factors.map(factor => `<li>${factor.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</li>`).join('')}
+              </ul>
+            </div>
           ` : ''}
           
           ${student.recommendations && student.recommendations.length > 0 ? `
             <div class="recommendations">
-              <h4>Recommended Actions:</h4>
+              <h4>💡 Recommended Actions</h4>
               <ul>
                 ${student.recommendations.map(rec => `<li><strong>${rec.action}:</strong> ${rec.description || 'No description provided'}</li>`).join('')}
               </ul>
             </div>
           ` : ''}
           
-          <p>Please log in to the system to view detailed information and take appropriate action.</p>
+          <div class="btn-container">
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/login" class="btn btn-primary">
+              📊 View Detailed Report
+            </a>
+          </div>
         </div>
         
-        <div class="footer">
-          <p>This is an automated message from the Student Early Warning System. Please do not reply to this email.</p>
+        <div class="email-footer">
+          <p><strong>Student eSeva System</strong></p>
+          <p>This is an automated message. Please do not reply to this email.</p>
           <p>If you have any questions, please contact the counseling department.</p>
         </div>
       </div>
@@ -384,46 +774,56 @@ async function sendAlertEmail(recipientEmail, subject, data) {
 async function sendStudentNotificationEmail(data) {
   const { studentEmail, studentName, studentId, attendanceRate, message } = data;
   const subject = `Attendance Update - Action Required`;
+  const attendanceClass = attendanceRate < 75 ? 'alert-high' : attendanceRate < 85 ? 'alert-medium' : 'alert-low';
+  const attendanceIcon = attendanceRate < 75 ? '🚨' : attendanceRate < 85 ? '⚠️' : '✅';
   
   const html = `
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Attendance Update</title>
-      <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: #4f46e5; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-        .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
-        .alert { background: #fef3c7; border: 1px solid #f59e0b; padding: 15px; border-radius: 8px; margin: 20px 0; }
-        .button-container { text-align: center; margin: 30px 0; }
-        .btn { display: inline-block; padding: 12px 24px; margin: 0 10px; text-decoration: none; border-radius: 6px; font-weight: bold; }
-        .btn-success { background: #10b981; color: white; }
-        .btn-danger { background: #ef4444; color: white; }
-        .btn:hover { opacity: 0.9; }
-        .footer { text-align: center; margin-top: 30px; color: #6b7280; font-size: 14px; }
-      </style>
+      ${getResponsiveStyles()}
     </head>
     <body>
-      <div class="container">
-        <div class="header">
-          <h1>📚 Student Attendance Update</h1>
+      <div class="email-container">
+        <div class="email-header">
+          <h1>📚 Attendance Update</h1>
+          <p>Student: ${studentName} (ID: ${studentId})</p>
         </div>
-        <div class="content">
+        
+        <div class="email-content">
           <h2>Hello ${studentName}!</h2>
-          <p>This is an automated notification regarding your attendance status.</p>
+          <p>This is an automated notification regarding your attendance status. Please review the details below.</p>
           
-          <div class="alert">
-            <h3>📊 Your Attendance Details:</h3>
-            <p><strong>Student ID:</strong> ${studentId}</p>
-            <p><strong>Attendance Rate:</strong> ${attendanceRate}%</p>
-            <p><strong>Message:</strong> ${message}</p>
+          <div class="alert-box ${attendanceClass}">
+            <div class="content">
+              <h3>${attendanceIcon} Your Attendance Details</h3>
+              <div class="stats-grid">
+                <div class="stat-card">
+                  <div class="stat-label">Student ID</div>
+                  <div class="stat-value" style="font-size: 18px;">${studentId}</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-label">Attendance Rate</div>
+                  <div class="stat-value" style="color: ${attendanceRate < 75 ? '#ef4444' : attendanceRate < 85 ? '#f59e0b' : '#22c55e'};">
+                    ${attendanceRate}%
+                  </div>
+                </div>
+              </div>
+              <p><strong>Message:</strong> ${message}</p>
+            </div>
           </div>
           
-          <p>Please review the actions taken by the faculty and respond accordingly:</p>
+          <div class="alert-box alert-info">
+            <div class="content">
+              <h4>📝 Action Required</h4>
+              <p>Please review the actions taken by the faculty and respond accordingly. Your response is important for maintaining your academic record.</p>
+            </div>
+          </div>
           
-          <div class="button-container">
+          <div class="btn-container">
             <a href="mailto:faculty@school.edu?subject=Action Taken - ${studentId}&body=I have taken the necessary action regarding my attendance." class="btn btn-success">
               ✅ Action Taken
             </a>
@@ -432,10 +832,18 @@ async function sendStudentNotificationEmail(data) {
             </a>
           </div>
           
-          <p><strong>Note:</strong> Please click one of the buttons above to respond to the faculty's action. You can also reply directly to this email.</p>
+          <div class="alert-box alert-info">
+            <div class="content">
+              <h4>💡 Important Note</h4>
+              <p>Please click one of the buttons above to respond to the faculty's action. You can also reply directly to this email or contact the faculty office for more information.</p>
+            </div>
+          </div>
         </div>
-        <div class="footer">
-          <p>This is an automated message from Student eSeva System</p>
+        
+        <div class="email-footer">
+          <p><strong>Student eSeva System</strong></p>
+          <p>This is an automated message. Please do not reply to this email.</p>
+          <p>If you have any questions, please contact the faculty office.</p>
         </div>
       </div>
     </body>
@@ -457,47 +865,60 @@ async function sendStudentNotificationEmail(data) {
 async function sendParentNotificationEmail(data) {
   const { parentEmail, studentName, studentId, attendanceRate, message } = data;
   const subject = `Your Child's Attendance Update - Action Required`;
+  const attendanceClass = attendanceRate < 75 ? 'alert-high' : attendanceRate < 85 ? 'alert-medium' : 'alert-low';
+  const attendanceIcon = attendanceRate < 75 ? '🚨' : attendanceRate < 85 ? '⚠️' : '✅';
   
   const html = `
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Student Attendance Update</title>
-      <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: #dc2626; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-        .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
-        .alert { background: #fee2e2; border: 1px solid #dc2626; padding: 15px; border-radius: 8px; margin: 20px 0; }
-        .button-container { text-align: center; margin: 30px 0; }
-        .btn { display: inline-block; padding: 12px 24px; margin: 0 10px; text-decoration: none; border-radius: 6px; font-weight: bold; }
-        .btn-success { background: #10b981; color: white; }
-        .btn-danger { background: #ef4444; color: white; }
-        .btn:hover { opacity: 0.9; }
-        .footer { text-align: center; margin-top: 30px; color: #6b7280; font-size: 14px; }
-      </style>
+      ${getResponsiveStyles()}
     </head>
     <body>
-      <div class="container">
-        <div class="header">
+      <div class="email-container">
+        <div class="email-header">
           <h1>👨‍👩‍👧‍👦 Parent Notification</h1>
+          <p>Student: ${studentName} (ID: ${studentId})</p>
         </div>
-        <div class="content">
+        
+        <div class="email-content">
           <h2>Dear Parent/Guardian,</h2>
-          <p>This is an automated notification regarding your child's attendance status.</p>
+          <p>This is an automated notification regarding your child's attendance status. Please review the details below and take appropriate action.</p>
           
-          <div class="alert">
-            <h3>📊 Student Details:</h3>
-            <p><strong>Student Name:</strong> ${studentName}</p>
-            <p><strong>Student ID:</strong> ${studentId}</p>
-            <p><strong>Attendance Rate:</strong> ${attendanceRate}%</p>
-            <p><strong>Message:</strong> ${message}</p>
+          <div class="alert-box ${attendanceClass}">
+            <div class="content">
+              <h3>${attendanceIcon} Student Details</h3>
+              <div class="stats-grid">
+                <div class="stat-card">
+                  <div class="stat-label">Student Name</div>
+                  <div class="stat-value" style="font-size: 18px;">${studentName}</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-label">Student ID</div>
+                  <div class="stat-value" style="font-size: 18px;">${studentId}</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-label">Attendance Rate</div>
+                  <div class="stat-value" style="color: ${attendanceRate < 75 ? '#ef4444' : attendanceRate < 85 ? '#f59e0b' : '#22c55e'};">
+                    ${attendanceRate}%
+                  </div>
+                </div>
+              </div>
+              <p><strong>Message:</strong> ${message}</p>
+            </div>
           </div>
           
-          <p>Please review the actions taken by the faculty and respond accordingly:</p>
+          <div class="alert-box alert-info">
+            <div class="content">
+              <h4>📝 Action Required</h4>
+              <p>Please review the actions taken by the faculty and respond accordingly. Your approval or feedback is important for your child's academic progress.</p>
+            </div>
+          </div>
           
-          <div class="button-container">
+          <div class="btn-container">
             <a href="mailto:faculty@school.edu?subject=Action Approved - ${studentId}&body=I approve the action taken for my child ${studentName}'s attendance." class="btn btn-success">
               ✅ Approve Action
             </a>
@@ -506,10 +927,18 @@ async function sendParentNotificationEmail(data) {
             </a>
           </div>
           
-          <p><strong>Note:</strong> Please click one of the buttons above to respond to the faculty's action. You can also reply directly to this email.</p>
+          <div class="alert-box alert-info">
+            <div class="content">
+              <h4>💡 Important Note</h4>
+              <p>Please click one of the buttons above to respond to the faculty's action. You can also reply directly to this email or contact the school office for more information.</p>
+            </div>
+          </div>
         </div>
-        <div class="footer">
-          <p>This is an automated message from Student eSeva System</p>
+        
+        <div class="email-footer">
+          <p><strong>Student eSeva System</strong></p>
+          <p>This is an automated message. Please do not reply to this email.</p>
+          <p>If you have any questions, please contact the school office.</p>
         </div>
       </div>
     </body>

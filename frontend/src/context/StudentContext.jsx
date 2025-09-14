@@ -76,10 +76,11 @@ export function StudentProvider({ children }) {
       const response = await api.getStudents(filters);
       console.log('fetchStudents response:', response);
       
-      // Handle the new response structure (full response object)
-      if (response?.data?.success && response.data.students) {
-        dispatch({ type: "SET_STUDENTS", payload: response.data.students });
-        return response.data;
+      // Handle the response structure - check both possible formats
+      if ((response?.data?.success && response.data.students) || (response?.success && response.students)) {
+        const students = response.data?.students || response.students;
+        dispatch({ type: "SET_STUDENTS", payload: students });
+        return response.data || response;
       } else {
         dispatch({ type: "SET_STUDENTS", payload: [] });
         dispatch({ type: "SET_ERROR", payload: "No student data available." });
@@ -120,10 +121,11 @@ export function StudentProvider({ children }) {
       const response = await api.getDashboardSummary();
       console.log('fetchSummary response:', response);
       
-      // Handle the new response structure (full response object)
-      if (response?.data?.success && response.data.summary) {
-        dispatch({ type: "SET_SUMMARY", payload: response.data.summary });
-        return response.data;
+      // Handle the response structure - check both possible formats
+      if ((response?.data?.success && response.data.summary) || (response?.success && response.summary)) {
+        const summary = response.data?.summary || response.summary;
+        dispatch({ type: "SET_SUMMARY", payload: summary });
+        return response.data || response;
       } else {
         dispatch({ type: "SET_SUMMARY", payload: { total: 0, high: 0, medium: 0, low: 0, avgAttendance: 0 } });
         return response;
@@ -159,11 +161,13 @@ export function StudentProvider({ children }) {
         const response = await api.uploadFile(formData);
         console.log('uploadStudents response:', response);
         
-        // Handle the new response structure (full response object)
-        if (response?.data?.success) {
-          dispatch({ type: "SET_STUDENTS", payload: response.data.students || [] });
-          dispatch({ type: "SET_SUMMARY", payload: response.data.summary || { total: 0, high: 0, medium: 0, low: 0, avgAttendance: 0 } });
-          return response.data;
+        // Handle the response structure - check both possible formats
+        if (response?.data?.success || response?.success) {
+          const students = response.data?.students || response.students || [];
+          const summary = response.data?.summary || response.summary || { total: 0, high: 0, medium: 0, low: 0, avgAttendance: 0 };
+          dispatch({ type: "SET_STUDENTS", payload: students });
+          dispatch({ type: "SET_SUMMARY", payload: summary });
+          return response.data || response;
         } else {
           dispatch({ type: "SET_ERROR", payload: "Upload failed" });
           return response;
@@ -180,10 +184,11 @@ export function StudentProvider({ children }) {
         const response = await api.recalculateRisk(studentId);
         console.log('recalculateStudent response:', response);
         
-        // Handle the new response structure (full response object)
-        if (response?.data?.success && response.data.student) {
-          dispatch({ type: "UPDATE_STUDENT", payload: response.data.student });
-          return response.data;
+        // Handle the response structure - check both possible formats
+        if ((response?.data?.success && response.data.student) || (response?.success && response.student)) {
+          const student = response.data?.student || response.student;
+          dispatch({ type: "UPDATE_STUDENT", payload: student });
+          return response.data || response;
         } else {
           dispatch({ type: "SET_ERROR", payload: "Recalculation failed" });
           return response;
@@ -225,6 +230,42 @@ export function StudentProvider({ children }) {
       try {
         return await api.sendNotifications();
       } catch (error) {
+        dispatch({ type: "SET_ERROR", payload: error.message });
+        throw error;
+      }
+    },
+
+    // Delete student function
+    deleteStudent: async (studentId) => {
+      try {
+        const response = await api.deleteStudentRecord(studentId);
+        console.log('deleteStudent response:', response);
+        
+        // Refresh data after deletion
+        await fetchStudents();
+        await fetchSummary();
+        
+        return response;
+      } catch (error) {
+        console.error('deleteStudent error:', error);
+        dispatch({ type: "SET_ERROR", payload: error.message });
+        throw error;
+      }
+    },
+
+    // Delete all students function
+    deleteAllStudents: async () => {
+      try {
+        const response = await api.deleteAllStudentRecords();
+        console.log('deleteAllStudents response:', response);
+        
+        // Clear data after deletion
+        dispatch({ type: "SET_STUDENTS", payload: [] });
+        dispatch({ type: "SET_SUMMARY", payload: { total: 0, high: 0, medium: 0, low: 0, avgAttendance: 0 } });
+        
+        return response;
+      } catch (error) {
+        console.error('deleteAllStudents error:', error);
         dispatch({ type: "SET_ERROR", payload: error.message });
         throw error;
       }

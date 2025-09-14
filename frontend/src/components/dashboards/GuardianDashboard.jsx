@@ -120,8 +120,10 @@ const GuardianDashboard = () => {
   };
 
   const handleUploadSuccess = () => {
+    console.log('🔄 Guardian upload success - refreshing data...');
     handleRefresh();
     setShowUpload(false);
+    console.log('✅ Guardian upload data refresh completed');
   };
 
   const handleShowUpload = () => {

@@ -45,7 +45,6 @@ class JSRiskPredictor {
           failingSubjectsHigh: config.failingHigh,
           failingSubjectsMedium: config.failingMedium,
           overdueDaysHigh: config.overdueDays,
-          maxAttempts: config.maxAttempts,
         };
         
         console.log('JS ML Service loaded dynamic config:', { weights: this.weights, thresholds: this.thresholds });

@@ -6,6 +6,77 @@ const Config = require("../models/Config");
 const { sendActionApprovalEmail, sendActionStatusUpdateEmail } = require("../services/emailService");
 
 /**
+ * Get all grades from detailed grade fields for risk analysis
+ * @param {Object} data Student data
+ * @returns {Array} Array of grade objects with subject and score
+ */
+function getAllGradesFromDetailedFields(data) {
+  const allGrades = [];
+  
+  // Check all detailed grade fields
+  const gradeFields = [
+    'unit_test_1_grades',
+    'unit_test_2_grades', 
+    'mid_sem_grades',
+    'end_sem_grades'
+  ];
+  
+  gradeFields.forEach(field => {
+    if (data[field] && Array.isArray(data[field])) {
+      data[field].forEach(grade => {
+        if (grade.subject) {
+          const examType = field.replace('_grades', '');
+          let score = 0;
+          let hasScore = false;
+          
+          // Check for specific exam type score fields
+          if (examType === 'unit_test_1' && grade.unit_test_1 !== undefined) {
+            score = grade.unit_test_1;
+            hasScore = true;
+          } else if (examType === 'unit_test_2' && grade.unit_test_2 !== undefined) {
+            score = grade.unit_test_2;
+            hasScore = true;
+          } else if (examType === 'mid_sem' && grade.mid_sem !== undefined) {
+            score = grade.mid_sem;
+            hasScore = true;
+          } else if (examType === 'end_sem' && grade.end_sem !== undefined) {
+            score = grade.end_sem;
+            hasScore = true;
+          } else if (grade.score !== undefined) {
+            // Fallback for old 'score' field
+            score = grade.score;
+            hasScore = true;
+          }
+          
+          if (hasScore) {
+            allGrades.push({
+              subject: grade.subject,
+              score: score,
+              examType: examType
+            });
+          }
+        }
+      });
+    }
+  });
+  
+  // If no detailed grades found, fall back to basic grades array
+  if (allGrades.length === 0 && data.grades && Array.isArray(data.grades)) {
+    data.grades.forEach(grade => {
+      if (grade.subject && grade.score !== undefined) {
+        allGrades.push({
+          subject: grade.subject,
+          score: grade.score,
+          examType: 'basic'
+        });
+      }
+    });
+  }
+  
+  return allGrades;
+}
+
+/**
  * Get paginated list of students with role-based filtering and risk visibility.
  */
 async function getStudents(req, res, next) {
@@ -196,13 +267,17 @@ async function recalculateRisk(req, res, next) {
       await config.save();
     }
     
+    // Get all grades from detailed grade fields
+    const allGrades = getAllGradesFromDetailedFields(data);
+    const passCriteria = config.passCriteria || 60;
+    
     // Prepare ML features with dynamic pass criteria
     const mlFeatures = {
       attendance_rate: data.attendance_rate || 0,
-      avg_grade: data.grades && data.grades.length
-        ? data.grades.reduce((sum, g) => sum + g.score, 0) / data.grades.length
+      avg_grade: allGrades.length > 0
+        ? allGrades.reduce((sum, g) => sum + g.score, 0) / allGrades.length
         : 0,
-      failing_count: data.grades ? data.grades.filter((g) => g.score < (config.passCriteria || 60)).length : 0,
+      failing_count: allGrades.filter((g) => g.score < passCriteria).length,
       days_overdue: data.days_overdue || 0,
       attempts: 0, // Attempts removed from system
     };
@@ -246,6 +321,7 @@ async function recalculateRisk(req, res, next) {
     student.risk_factors = finalRisk.risk_factors;
     student.explanation = finalRisk.explanation;
     student.recommendations = finalRisk.recommendations;
+    student.failed_subjects = mlFeatures.failing_count; // Add failed subjects count
     student.last_updated = new Date();
     
     console.log(`Student before save - risk_score: ${student.risk_score}`);
@@ -704,6 +780,85 @@ async function deleteAllStudentRecords(req, res, next) {
   }
 }
 
+/**
+ * Manually recalculate risk for all students (for testing)
+ */
+async function recalculateAllRisks(req, res, next) {
+  try {
+    console.log('🔄 Manual risk recalculation triggered...');
+    
+    // Find all students
+    const students = await Student.find({});
+    console.log(`Found ${students.length} students to recalculate`);
+    
+    let successCount = 0;
+    let errorCount = 0;
+    
+    for (const student of students) {
+      try {
+        console.log(`🔄 Processing ${student.student_id} (${student.name}) - Data Complete: ${student.data_complete}`);
+        
+        if (student.data_complete) {
+          // Calculate new risk using updated settings
+          const riskAssessment = await riskCalculator.calculateRisk(student.toObject());
+          
+          if (riskAssessment) {
+            // Calculate failed subjects count
+            const allGrades = getAllGradesFromDetailedFields(student.toObject());
+            const config = await Config.findOne();
+            const passCriteria = config?.passCriteria || 60;
+            const failingCount = allGrades.filter(grade => grade.score < passCriteria).length;
+            
+            // Update student with new risk data
+            student.risk_level = riskAssessment.risk_level;
+            student.risk_score = riskAssessment.risk_score;
+            student.risk_factors = riskAssessment.risk_factors;
+            student.explanation = riskAssessment.explanation;
+            student.recommendations = riskAssessment.recommendations;
+            student.failed_subjects = failingCount; // Add failed subjects count
+            student.last_updated = new Date();
+            
+            await student.save();
+            successCount++;
+            
+            console.log(`✅ Updated risk for ${student.student_id}: ${riskAssessment.risk_level} (${riskAssessment.risk_score})`);
+          } else {
+            console.log(`⚠️ No risk assessment returned for ${student.student_id}`);
+          }
+        } else {
+          // Clear risk data for incomplete students
+          student.risk_level = "pending";
+          student.risk_score = 0;
+          student.risk_factors = [];
+          student.explanation = [];
+          student.recommendations = [];
+          student.last_updated = new Date();
+          
+          await student.save();
+          successCount++;
+          
+          console.log(`⏳ Cleared risk data for ${student.student_id} - data incomplete`);
+        }
+      } catch (error) {
+        console.error(`❌ Error processing ${student.student_id}:`, error.message);
+        errorCount++;
+      }
+    }
+    
+    console.log(`🔄 Manual risk recalculation completed: ${successCount} successful, ${errorCount} errors`);
+    
+    res.json({
+      success: true,
+      message: `Risk recalculation completed: ${successCount} successful, ${errorCount} errors`,
+      results: { successCount, errorCount, total: students.length }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error in recalculateAllRisks:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+}
+
 module.exports = {
   getStudents,
   getStudentById,
@@ -717,4 +872,5 @@ module.exports = {
   deleteFeesData,
   deleteStudentRecord,
   deleteAllStudentRecords,
+  recalculateAllRisks,
 };

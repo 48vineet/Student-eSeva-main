@@ -28,6 +28,13 @@ const register = async (req, res, next) => {
       });
     }
 
+    if (role === "parent" && !ward_student_id) {
+      return res.status(400).json({
+        success: false,
+        error: "Ward Student ID is required for parent role"
+      });
+    }
+
     if (role === "faculty" && !department) {
       return res.status(400).json({
         success: false,
@@ -47,8 +54,8 @@ const register = async (req, res, next) => {
       });
     }
 
-    // For students and guardians, verify the student exists
-    if (role === "student" || role === "local-guardian") {
+    // For students, guardians, and parents, verify the student exists
+    if (role === "student" || role === "local-guardian" || role === "parent") {
       const studentId = role === "student" ? student_id : ward_student_id;
       const student = await Student.findOne({ student_id: studentId });
       
@@ -59,8 +66,8 @@ const register = async (req, res, next) => {
         });
       }
 
-      // For guardians, verify the email matches
-      if (role === "local-guardian" && student.parent_email !== email) {
+      // For guardians and parents, verify the email matches
+      if ((role === "local-guardian" || role === "parent") && student.parent_email !== email) {
         return res.status(400).json({
           success: false,
           error: "Email does not match the parent email on record"
@@ -75,7 +82,7 @@ const register = async (req, res, next) => {
       password,
       role,
       student_id: role === "student" ? student_id : undefined,
-      ward_student_id: role === "local-guardian" ? ward_student_id : undefined,
+      ward_student_id: (role === "local-guardian" || role === "parent") ? ward_student_id : undefined,
       department: role === "faculty" ? department : undefined,
     });
 

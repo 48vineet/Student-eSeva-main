@@ -16,7 +16,24 @@ const ActionHistory = ({ student, onClose }) => {
     setLoading(true);
     try {
       const response = await axios.get(`/api/students/${student.student_id}/actions`);
-      setActions(response.data.actions);
+      const apiActions = response.data.actions || [];
+      
+      // Combine API actions with student recommendations
+      const recommendations = student.recommendations || [];
+      const combinedActions = [
+        ...apiActions,
+        ...recommendations.map(rec => ({
+          _id: rec._id || `rec-${Date.now()}-${Math.random()}`,
+          description: rec.action,
+          counselor_notes: rec.description || 'AI-generated recommendation',
+          status: rec.completed ? 'completed' : 'pending',
+          priority: rec.urgency || 'medium',
+          last_updated: rec.date,
+          type: 'recommendation'
+        }))
+      ];
+      
+      setActions(combinedActions);
     } catch (error) {
       console.error('Error fetching actions:', error);
       setMessage('Error loading actions');
@@ -29,6 +46,7 @@ const ActionHistory = ({ student, onClose }) => {
     switch (status) {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
       case 'approved': return 'bg-green-100 text-green-800';
+      case 'completed': return 'bg-green-100 text-green-800';
       case 'rejected': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -36,7 +54,8 @@ const ActionHistory = ({ student, onClose }) => {
 
   const getPriorityColor = (priority) => {
     switch (priority) {
-      case 'urgent': return 'bg-red-100 text-red-800';
+      case 'urgent': 
+      case 'immediate': return 'bg-red-100 text-red-800';
       case 'high': return 'bg-orange-100 text-orange-800';
       case 'medium': return 'bg-yellow-100 text-yellow-800';
       case 'low': return 'bg-green-100 text-green-800';
@@ -79,10 +98,19 @@ const ActionHistory = ({ student, onClose }) => {
           ) : (
             <div className="space-y-4">
               {actions.map((action) => (
-                <div key={action._id} className="border rounded-lg p-4 bg-white shadow-sm">
+                <div key={action._id} className={`border rounded-lg p-4 shadow-sm ${
+                  action.type === 'recommendation' ? 'bg-blue-50 border-blue-200' : 'bg-white'
+                }`}>
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex-1">
-                      <h4 className="font-medium text-gray-900">{action.description}</h4>
+                      <div className="flex items-center mb-1">
+                        <h4 className="font-medium text-gray-900">{action.description}</h4>
+                        {action.type === 'recommendation' && (
+                          <span className="ml-2 px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
+                            AI Recommendation
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm text-gray-600 mt-1">{action.counselor_notes}</p>
                     </div>
                     <div className="flex space-x-2 ml-4">

@@ -21,7 +21,6 @@ async function createConfig() {
       failingHigh: 2,
       failingMedium: 1,
       overdueDays: 30,
-      maxAttempts: 3,
       institutionName: "Student eSeva Institution",
       academicYear: new Date().getFullYear().toString(),
       semester: "1",

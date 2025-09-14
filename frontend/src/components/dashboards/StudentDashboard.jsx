@@ -5,6 +5,7 @@ import { useStudents } from '../../context/StudentContext';
 import { api } from '../../api/api';
 import StudentDetailsModal from '../StudentDetailsModal';
 import ActionHistory from '../ActionHistory';
+import StudentProgressReport from '../StudentProgressReport';
 import Navbar from '../Navbar';
 import {
   BookOpen,
@@ -32,6 +33,7 @@ const StudentDashboard = () => {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [showActions, setShowActions] = useState(false);
+  const [showProgressReport, setShowProgressReport] = useState(false);
   const [studentData, setStudentData] = useState(null);
   const [studentLoading, setStudentLoading] = useState(false);
   const [studentError, setStudentError] = useState(null);
@@ -46,9 +48,9 @@ const StudentDashboard = () => {
           
           // Use the specific student endpoint
           const response = await api.getStudentById(user.student_id);
-          setStudentData(response.student);
+          setStudentData(response.data.student);
           
-          console.log('StudentDashboard - fetched student data:', response.student);
+          console.log('StudentDashboard - fetched student data:', response.data.student);
         } catch (error) {
           console.error('StudentDashboard - error fetching student data:', error);
           setStudentError(error.message || 'Failed to fetch student data');
@@ -87,6 +89,14 @@ const StudentDashboard = () => {
 
   const handleCloseActions = () => {
     setShowActions(false);
+  };
+
+  const handleShowProgressReport = () => {
+    setShowProgressReport(true);
+  };
+
+  const handleCloseProgressReport = () => {
+    setShowProgressReport(false);
   };
 
   if (studentLoading) {
@@ -263,7 +273,6 @@ const StudentDashboard = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -290,9 +299,6 @@ const StudentDashboard = () => {
                         <CheckCircle className="w-3 h-3 mr-1" />
                         Complete
                       </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <button className="text-indigo-600 hover:text-indigo-900">View Details</button>
                     </td>
                   </tr>
 
@@ -336,9 +342,6 @@ const StudentDashboard = () => {
                         {studentData.grades && studentData.grades.some(g => g.status === 'failing') ? 'Needs Attention' : 'Good'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <button className="text-indigo-600 hover:text-indigo-900">View Grades</button>
-                    </td>
                   </tr>
 
                   {/* Attendance */}
@@ -379,9 +382,6 @@ const StudentDashboard = () => {
                          studentData.attendance_rate >= 75 ? 'Good' : 'Needs Improvement'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <button className="text-indigo-600 hover:text-indigo-900">View Details</button>
-                    </td>
                   </tr>
 
                   {/* Fees Status */}
@@ -419,9 +419,6 @@ const StudentDashboard = () => {
                       }`}>
                         {studentData.fees_status === 'Complete' || studentData.amount_due === 0 ? 'Paid' : 'Pending'}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <button className="text-indigo-600 hover:text-indigo-900">View Details</button>
                     </td>
                   </tr>
 
@@ -463,9 +460,6 @@ const StudentDashboard = () => {
                         {studentData.risk_level === 'high' ? 'High Priority' :
                          studentData.risk_level === 'medium' ? 'Monitor' : 'Low Risk'}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <button className="text-indigo-600 hover:text-indigo-900">View Analysis</button>
                     </td>
                   </tr>
                 </tbody>
@@ -522,7 +516,10 @@ const StudentDashboard = () => {
                           </div>
                         </div>
                         <div className="ml-4">
-                          <button className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors duration-200 flex items-center">
+                          <button 
+                            onClick={handleViewDetails}
+                            className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors duration-200 flex items-center"
+                          >
                             <Eye className="w-4 h-4 mr-2" />
                             View Details
                           </button>
@@ -559,6 +556,7 @@ const StudentDashboard = () => {
                 <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-200" />
               </button>
               <button
+                onClick={handleShowProgressReport}
                 className="group flex items-center justify-center px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-lg hover:from-orange-700 hover:to-red-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
               >
                 <TrendingUp className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform duration-200" />
@@ -574,6 +572,7 @@ const StudentDashboard = () => {
       {showModal && selectedStudent && (
         <StudentDetailsModal
           student={selectedStudent}
+          isOpen={showModal}
           onClose={handleCloseModal}
           showActions={false}
         />
@@ -584,6 +583,14 @@ const StudentDashboard = () => {
         <ActionHistory
           student={studentData}
           onClose={handleCloseActions}
+        />
+      )}
+
+      {/* Progress Report Modal */}
+      {showProgressReport && studentData && (
+        <StudentProgressReport
+          student={studentData}
+          onClose={handleCloseProgressReport}
         />
       )}
     </div>

@@ -38,6 +38,14 @@ const UserSchema = new mongoose.Schema(
       },
       trim: true,
     },
+    // For parents - link to their child's student record
+    ward_student_id: {
+      type: String,
+      required: function() {
+        return this.role === "parent";
+      },
+      trim: true,
+    },
     // For faculty - department information
     department: {
       type: String,

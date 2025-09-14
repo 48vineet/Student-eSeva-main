@@ -43,11 +43,12 @@ const AttendanceUpload = ({ onUploadSuccess }) => {
       setMessage(`Successfully uploaded ${data.createdCount} student records${emailMessage}`);
       
       // Show success message briefly and then close modal
+      // Add delay to allow backend risk calculation to complete
       setTimeout(() => {
         if (onUploadSuccess) {
           onUploadSuccess();
         }
-      }, 800); // Reduced to 0.8 seconds for faster response
+      }, 2000); // Increased to 2 seconds to allow risk calculation
     } catch (err) {
       setError(err.message || 'Upload failed');
     } finally {

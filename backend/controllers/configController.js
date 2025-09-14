@@ -1,4 +1,6 @@
 const Config = require("../models/Config");
+const Student = require("../models/Student");
+const riskCalculator = require("../services/riskCalculator");
 
 /**
  * Get current configuration
@@ -22,7 +24,6 @@ async function getConfig(req, res) {
         failingHigh: config.failingHigh,
         failingMedium: config.failingMedium,
         overdueDays: config.overdueDays,
-        maxAttempts: config.maxAttempts,
         institutionName: config.institutionName,
         academicYear: config.academicYear,
         semester: config.semester,
@@ -59,7 +60,7 @@ async function updateConfig(req, res) {
     // Validate the updates
     const allowedFields = [
       'attendanceCritical', 'attendanceWarning', 'passCriteria', 'failingHigh', 'failingMedium',
-      'overdueDays', 'maxAttempts', 'institutionName', 'academicYear', 'semester',
+      'overdueDays', 'institutionName', 'academicYear', 'semester',
       'emailNotifications', 'smsNotifications', 'emailStudentRiskLevels', 'emailParentRiskLevels',
       'emailFrequency', 'includeDetailedGrades', 'includeRecommendations',
       'attendanceWeight', 'academicWeight', 'financialWeight'
@@ -86,6 +87,12 @@ async function updateConfig(req, res) {
         runValidators: true 
       }
     );
+
+    // Recalculate risk for all students with complete data when settings change
+    if (Object.keys(filteredUpdates).length > 0) {
+      console.log('🔄 Settings changed, recalculating risk for all students...');
+      await recalculateAllStudentRisks();
+    }
     
     res.json({ 
       success: true, 
@@ -97,7 +104,6 @@ async function updateConfig(req, res) {
         failingHigh: config.failingHigh,
         failingMedium: config.failingMedium,
         overdueDays: config.overdueDays,
-        maxAttempts: config.maxAttempts,
         institutionName: config.institutionName,
         academicYear: config.academicYear,
         semester: config.semester,
@@ -164,6 +170,54 @@ async function resetConfig(req, res) {
       success: false, 
       error: "Failed to reset configuration" 
     });
+  }
+}
+
+/**
+ * Recalculate risk for all students with complete data
+ */
+async function recalculateAllStudentRisks() {
+  try {
+    console.log('🔄 Starting risk recalculation for all students...');
+    
+    // Find all students with complete data
+    const students = await Student.find({ data_complete: true });
+    console.log(`Found ${students.length} students with complete data to recalculate`);
+    
+    let successCount = 0;
+    let errorCount = 0;
+    
+    for (const student of students) {
+      try {
+        console.log(`🔄 Recalculating risk for ${student.student_id} (${student.name})`);
+        
+        // Calculate new risk using updated settings
+        const riskAssessment = await riskCalculator.calculateRisk(student.toObject());
+        
+        if (riskAssessment) {
+          // Update student with new risk data
+          student.risk_level = riskAssessment.risk_level;
+          student.risk_score = riskAssessment.risk_score;
+          student.risk_factors = riskAssessment.risk_factors;
+          student.explanation = riskAssessment.explanation;
+          student.recommendations = riskAssessment.recommendations;
+          student.last_updated = new Date();
+          
+          await student.save();
+          successCount++;
+          
+          console.log(`✅ Updated risk for ${student.student_id}: ${riskAssessment.risk_level} (${riskAssessment.risk_score})`);
+        }
+      } catch (error) {
+        console.error(`❌ Failed to recalculate risk for ${student.student_id}:`, error.message);
+        errorCount++;
+      }
+    }
+    
+    console.log(`🔄 Risk recalculation completed: ${successCount} successful, ${errorCount} errors`);
+    
+  } catch (error) {
+    console.error('❌ Error in recalculateAllStudentRisks:', error);
   }
 }
 

@@ -88,9 +88,11 @@ const CounselorDashboard = () => {
   };
 
   const handleUploadSuccess = () => {
+    console.log('🔄 Upload success - refreshing all data...');
     setShowUpload(false);
-    // Refresh students data
-    fetchStudents();
+    // Refresh both students and summary data
+    actions.refreshData();
+    console.log('✅ Upload data refresh completed');
   };
 
   const handleCleanupDuplicates = async () => {
@@ -126,11 +128,12 @@ const CounselorDashboard = () => {
     if (!deleteModalStudent) return;
     
     try {
-      await api.deleteStudentRecord(deleteModalStudent.student_id);
+      console.log('🗑️ Deleting student record:', deleteModalStudent.student_id);
+      // Use context delete function which automatically refreshes data
+      await actions.deleteStudent(deleteModalStudent.student_id);
       setShowDeleteModal(false);
       setDeleteModalStudent(null);
-      // Refresh students data
-      await fetchStudents();
+      console.log('✅ Student deleted and data refreshed');
     } catch (error) {
       console.error('Error deleting student record:', error);
       alert('Error occurred while deleting student record. Please try again.');
@@ -152,10 +155,11 @@ const CounselorDashboard = () => {
     }
     
     try {
-      const result = await api.deleteAllStudentRecords();
-      alert(`✅ Successfully deleted ${result.data.deletedCount} student records from the database.`);
-      // Refresh students data
-      await fetchStudents();
+      console.log('🗑️ Deleting ALL student records...');
+      // Use context delete function which automatically refreshes data
+      const result = await actions.deleteAllStudents();
+      alert(`✅ Successfully deleted all student records from the database.`);
+      console.log('✅ All students deleted and data refreshed');
     } catch (error) {
       console.error('Error deleting all student records:', error);
       alert('❌ Error occurred while deleting all student records. Please try again.');
@@ -467,6 +471,7 @@ const CounselorDashboard = () => {
       {showModal && selectedStudent && (
         <StudentDetailsModal
           student={selectedStudent}
+          isOpen={showModal}
           onClose={handleCloseModal}
           showActions={true}
         />

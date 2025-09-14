@@ -7,7 +7,7 @@ const ExamDataUpload = ({ onClose, onUploadSuccess }) => {
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const [examType, setExamType] = useState('end_sem');
+  const [examType, setExamType] = useState('unit_test_1');
   const [uploadedFile, setUploadedFile] = useState(null);
 
   const onDrop = async (acceptedFiles) => {
@@ -37,11 +37,12 @@ const ExamDataUpload = ({ onClose, onUploadSuccess }) => {
       setMessage(`Successfully updated ${response.updatedCount} student records`);
       
       // Show success message briefly and then close modal
+      // Add delay to allow backend risk calculation to complete
       setTimeout(() => {
         if (onUploadSuccess) {
           onUploadSuccess();
         }
-      }, 800); // Reduced to 0.8 seconds for faster response
+      }, 2000); // Increased to 2 seconds to allow risk calculation
     } catch (err) {
       console.error('Upload error:', err);
       setError(err.response?.data?.error || err.message || 'Upload failed');

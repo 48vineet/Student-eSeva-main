@@ -34,18 +34,26 @@ const ParentDashboard = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (user && user.role === 'parent' && user.student_id) {
+      console.log('ParentDashboard - user:', user);
+      console.log('ParentDashboard - user role:', user?.role);
+      console.log('ParentDashboard - user ward_student_id:', user?.ward_student_id);
+      
+      if (user && user.role === 'parent' && user.ward_student_id) {
         try {
           setLoading(true);
           setError(null);
           
+          console.log('ParentDashboard - fetching student data for:', user.ward_student_id);
+          
           // Fetch student data
-          const studentResponse = await api.getStudentById(user.student_id);
-          setStudentData(studentResponse.student);
+          const studentResponse = await api.getStudentById(user.ward_student_id);
+          console.log('ParentDashboard - student response:', studentResponse);
+          setStudentData(studentResponse.data.student);
           
           // Fetch actions for the student
-          const actionsResponse = await api.getStudentActions(user.student_id);
-          setActions(actionsResponse.actions || []);
+          const actionsResponse = await api.getStudentActions(user.ward_student_id);
+          console.log('ParentDashboard - actions response:', actionsResponse);
+          setActions(actionsResponse.data.actions || []);
           
         } catch (error) {
           console.error('ParentDashboard - error fetching data:', error);
@@ -53,6 +61,9 @@ const ParentDashboard = () => {
         } finally {
           setLoading(false);
         }
+      } else {
+        console.log('ParentDashboard - missing user data or invalid role');
+        setError('Invalid user data or missing ward student ID');
       }
     };
 
@@ -65,8 +76,8 @@ const ParentDashboard = () => {
       await api.updateAction(actionId, { status, reason });
       
       // Refresh actions
-      const actionsResponse = await api.getStudentActions(user.student_id);
-      setActions(actionsResponse.actions || []);
+      const actionsResponse = await api.getStudentActions(user.ward_student_id);
+      setActions(actionsResponse.data.actions || []);
       
       setShowActionModal(false);
       setSelectedAction(null);
@@ -136,6 +147,7 @@ const ParentDashboard = () => {
           <div className="text-center">
             <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
             <p className="text-red-600 text-lg">{error}</p>
+            <p className="text-sm text-gray-500 mt-2">User: {user?.username || 'N/A'}, Role: {user?.role || 'N/A'}, Ward Student ID: {user?.ward_student_id || 'N/A'}</p>
           </div>
         </div>
       </div>
@@ -155,6 +167,7 @@ const ParentDashboard = () => {
           <div className="text-center">
             <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-600 text-lg">No student data available</p>
+            <p className="text-sm text-gray-500 mt-2">User: {user?.username || 'N/A'}, Role: {user?.role || 'N/A'}, Ward Student ID: {user?.ward_student_id || 'N/A'}</p>
           </div>
         </div>
       </div>
