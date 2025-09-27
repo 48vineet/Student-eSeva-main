@@ -410,7 +410,83 @@ This project is licensed under the ISC License.
 ## 👥 Authors
 
 - **Vineet Mali** - Lead Developer
-- **Priyal Mainkar** - Project Contributor
+Machine Learning Type in Student-eSeva
+📊 Classification: Hybrid Rule-Based + Custom ML System
+Your project uses a unique hybrid approach that combines multiple ML techniques:
+🎯 Primary ML Type: Rule-Based Expert System
+What it is:
+Expert System with Rule-Based Logic
+Transparent Decision Tree approach
+Weighted Scoring Algorithm
+How it works:
+🧮 Secondary ML Type: Custom JavaScript ML Service
+What it is:
+Custom Weighted Linear Model
+Probability Distribution Classifier
+Dynamic Configuration System
+Algorithm Details:
+📈 Specific ML Techniques Used:
+1. Linear Regression
+Grade Progression Analysis
+Trend Detection across multiple exams
+Performance Pattern Recognition
+2. Weighted Scoring
+Multi-factor Risk Assessment
+Dynamic Weight Adjustment
+Feature Importance Ranking
+3. Probability Distribution
+Risk Level Classification
+Confidence Scoring
+Uncertainty Quantification
+4. Trend Analysis
+Time Series Analysis for grade progression
+Pattern Recognition for declining performance
+Anomaly Detection for risk factors
+🔍 Technical Classification:
+Supervised Learning:
+✅ Classification Problem (High/Medium/Low Risk)
+✅ Multi-class Classification (3 risk levels)
+✅ Feature Engineering (attendance, grades, fees)
+Unsupervised Learning:
+✅ Pattern Recognition in grade trends
+✅ Anomaly Detection for risk factors
+Reinforcement Learning:
+❌ Not Used (no learning from feedback)
+📚 ML Libraries Used:
+Backend Dependencies:
+Custom Implementation:
+No external ML frameworks (TensorFlow, PyTorch, Scikit-learn)
+Pure JavaScript implementation
+Custom algorithms built from scratch
+🎯 ML Model Architecture:
+🏷️ Final Classification:
+Primary Type:
+Rule-Based Expert System with Custom ML Algorithms
+Sub-categories:
+Multi-class Classification
+Weighted Linear Regression
+Probability Distribution
+Trend Analysis
+Feature Engineering
+Learning Paradigm:
+Hybrid Approach (Rule-based + Custom ML)
+Transparent Decision Making
+Dynamic Configuration
+Real-time Processing
+💡 Why This Approach?
+🎯 Interpretability: Easy to understand why decisions are made
+⚡ Performance: Fast real-time calculations
+🔧 Flexibility: Easy to adjust rules and weights
+📊 Transparency: Clear explanation of risk factors
+🛡️ Reliability: Fallback mechanisms if ML fails
+🚀 Summary:
+Your Student-eSeva project uses a sophisticated hybrid ML system that combines:
+Rule-Based Expert System (Primary)
+Custom JavaScript ML Service (Secondary)
+Linear Regression for trend analysis
+Probability Distribution for classification
+Weighted Scoring for multi-factor assessment
+This is NOT traditional deep learning or neural networks, but rather a custom-built intelligent system that's specifically designed for educational risk assessment! 🎓✨
 
 ## 📞 Support
 
