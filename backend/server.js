@@ -4,7 +4,7 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const connectDB = require("./config/db");
 const { port } = require("./config/env");
-const errorHandler = require("./utils/errorHandler");
+const errorHandler = require("./utils/errorHandler"); 
 
 const app = express();
 connectDB();
