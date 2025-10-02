@@ -9,7 +9,7 @@ import Login from "./views/Login";
 import Signup from "./views/Signup";
 import Settings from "./views/Settings";
 import Home from "./views/Home";
-
+ 
 function App() {  
   return (
     <AuthProvider>
