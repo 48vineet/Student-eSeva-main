@@ -10,7 +10,7 @@ import Signup from "./views/Signup";
 import Settings from "./views/Settings";
 import Home from "./views/Home";
  
-function App() {  
+function App() {   
   return (
     <AuthProvider>
       <ConfigProvider>
