@@ -11,66 +11,68 @@ const generateToken = (userId) => {
 // Register new user
 const register = async (req, res, next) => {
   try {
-    const { username, email, password, role, student_id, ward_student_id, department } = req.body;
+    const {
+      username,
+      email,
+      password,
+      role,
+      student_id,
+      ward_student_id,
+      department,
+    } = req.body;
+    const linkedStudentId = student_id || ward_student_id;
 
     // Validate required fields based on role
     if (role === "student" && !student_id) {
       return res.status(400).json({
         success: false,
-        error: "Student ID is required for student role"
+        error: "Student ID is required for student role",
       });
     }
 
-    if (role === "local-guardian" && !ward_student_id) {
+    if (role === "parent" && !linkedStudentId) {
       return res.status(400).json({
         success: false,
-        error: "Ward Student ID is required for guardian role"
-      });
-    }
-
-    if (role === "parent" && !ward_student_id) {
-      return res.status(400).json({
-        success: false,
-        error: "Ward Student ID is required for parent role"
+        error: "Student ID is required for parent role",
       });
     }
 
     if (role === "faculty" && !department) {
       return res.status(400).json({
         success: false,
-        error: "Department is required for faculty role"
+        error: "Department is required for faculty role",
       });
     }
 
     // Check if user already exists
     const existingUser = await User.findOne({
-      $or: [{ email }, { username }]
+      $or: [{ email }, { username }],
     });
 
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        error: "User with this email or username already exists"
+        error: "User with this email or username already exists",
       });
     }
 
-    // For students, guardians, and parents, verify the student exists
-    if (role === "student" || role === "local-guardian" || role === "parent") {
-      const studentId = role === "student" ? student_id : ward_student_id;
+    // For students and parents, verify the linked student exists
+    if (role === "student" || role === "parent") {
+      const studentId = role === "student" ? student_id : linkedStudentId;
       const student = await Student.findOne({ student_id: studentId });
-      
+
       if (!student) {
         return res.status(400).json({
           success: false,
-          error: `Student with ID ${studentId} not found`
+          error: `Student with ID ${studentId} not found`,
         });
       }
 
-      // For guardians and parents, verify the email matches
-      if ((role === "local-guardian" || role === "parent") && student.parent_email !== email) {
+      // For parents, verify the email matches
+      if (role === "parent" && student.parent_email !== email) {
         return res.status(400).json({
           success: false,
-          error: "Email does not match the parent email on record"
+          error: "Email does not match the parent email on record",
         });
       }
     }
@@ -82,7 +84,7 @@ const register = async (req, res, next) => {
       password,
       role,
       student_id: role === "student" ? student_id : undefined,
-      ward_student_id: (role === "local-guardian" || role === "parent") ? ward_student_id : undefined,
+      ward_student_id: role === "parent" ? linkedStudentId : undefined,
       department: role === "faculty" ? department : undefined,
     });
 
@@ -95,7 +97,7 @@ const register = async (req, res, next) => {
       success: true,
       message: "User registered successfully",
       user: user.toJSON(),
-      token
+      token,
     });
   } catch (error) {
     next(error);
@@ -112,7 +114,7 @@ const login = async (req, res, next) => {
     if (!user) {
       return res.status(401).json({
         success: false,
-        error: "Invalid credentials"
+        error: "Invalid credentials",
       });
     }
 
@@ -121,7 +123,7 @@ const login = async (req, res, next) => {
     if (!isPasswordValid) {
       return res.status(401).json({
         success: false,
-        error: "Invalid credentials"
+        error: "Invalid credentials",
       });
     }
 
@@ -136,7 +138,7 @@ const login = async (req, res, next) => {
       success: true,
       message: "Login successful",
       user: user.toJSON(),
-      token
+      token,
     });
   } catch (error) {
     next(error);
@@ -150,13 +152,13 @@ const getProfile = async (req, res, next) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        error: "User not found"
+        error: "User not found",
       });
     }
 
     res.json({
       success: true,
-      user: user.toJSON()
+      user: user.toJSON(),
     });
   } catch (error) {
     next(error);
@@ -172,25 +174,25 @@ const updateProfile = async (req, res, next) => {
     const updateData = {};
     if (username) updateData.username = username;
     if (email) updateData.email = email;
-    if (department && req.user.role === "faculty") updateData.department = department;
+    if (department && req.user.role === "faculty")
+      updateData.department = department;
 
-    const user = await User.findByIdAndUpdate(
-      userId,
-      updateData,
-      { new: true, runValidators: true }
-    ).select("-password");
+    const user = await User.findByIdAndUpdate(userId, updateData, {
+      new: true,
+      runValidators: true,
+    }).select("-password");
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        error: "User not found"
+        error: "User not found",
       });
     }
 
     res.json({
       success: true,
       message: "Profile updated successfully",
-      user: user.toJSON()
+      user: user.toJSON(),
     });
   } catch (error) {
     next(error);
@@ -207,7 +209,7 @@ const changePassword = async (req, res, next) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        error: "User not found"
+        error: "User not found",
       });
     }
 
@@ -216,7 +218,7 @@ const changePassword = async (req, res, next) => {
     if (!isCurrentPasswordValid) {
       return res.status(400).json({
         success: false,
-        error: "Current password is incorrect"
+        error: "Current password is incorrect",
       });
     }
 
@@ -226,7 +228,7 @@ const changePassword = async (req, res, next) => {
 
     res.json({
       success: true,
-      message: "Password changed successfully"
+      message: "Password changed successfully",
     });
   } catch (error) {
     next(error);
@@ -238,5 +240,5 @@ module.exports = {
   login,
   getProfile,
   updateProfile,
-  changePassword
+  changePassword,
 };

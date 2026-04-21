@@ -3,7 +3,10 @@ const User = require("../models/User");
 const riskCalculator = require("../services/riskCalculator");
 const { predictRisk } = require("../services/mlService");
 const Config = require("../models/Config");
-const { sendActionApprovalEmail, sendActionStatusUpdateEmail } = require("../services/emailService");
+const {
+  sendActionApprovalEmail,
+  sendActionStatusUpdateEmail,
+} = require("../services/emailService");
 
 /**
  * Get all grades from detailed grade fields for risk analysis
@@ -12,34 +15,37 @@ const { sendActionApprovalEmail, sendActionStatusUpdateEmail } = require("../ser
  */
 function getAllGradesFromDetailedFields(data) {
   const allGrades = [];
-  
+
   // Check all detailed grade fields
   const gradeFields = [
-    'unit_test_1_grades',
-    'unit_test_2_grades', 
-    'mid_sem_grades',
-    'end_sem_grades'
+    "unit_test_1_grades",
+    "unit_test_2_grades",
+    "mid_sem_grades",
+    "end_sem_grades",
   ];
-  
-  gradeFields.forEach(field => {
+
+  gradeFields.forEach((field) => {
     if (data[field] && Array.isArray(data[field])) {
-      data[field].forEach(grade => {
+      data[field].forEach((grade) => {
         if (grade.subject) {
-          const examType = field.replace('_grades', '');
+          const examType = field.replace("_grades", "");
           let score = 0;
           let hasScore = false;
-          
+
           // Check for specific exam type score fields
-          if (examType === 'unit_test_1' && grade.unit_test_1 !== undefined) {
+          if (examType === "unit_test_1" && grade.unit_test_1 !== undefined) {
             score = grade.unit_test_1;
             hasScore = true;
-          } else if (examType === 'unit_test_2' && grade.unit_test_2 !== undefined) {
+          } else if (
+            examType === "unit_test_2" &&
+            grade.unit_test_2 !== undefined
+          ) {
             score = grade.unit_test_2;
             hasScore = true;
-          } else if (examType === 'mid_sem' && grade.mid_sem !== undefined) {
+          } else if (examType === "mid_sem" && grade.mid_sem !== undefined) {
             score = grade.mid_sem;
             hasScore = true;
-          } else if (examType === 'end_sem' && grade.end_sem !== undefined) {
+          } else if (examType === "end_sem" && grade.end_sem !== undefined) {
             score = grade.end_sem;
             hasScore = true;
           } else if (grade.score !== undefined) {
@@ -47,32 +53,32 @@ function getAllGradesFromDetailedFields(data) {
             score = grade.score;
             hasScore = true;
           }
-          
+
           if (hasScore) {
             allGrades.push({
               subject: grade.subject,
               score: score,
-              examType: examType
+              examType: examType,
             });
           }
         }
       });
     }
   });
-  
+
   // If no detailed grades found, fall back to basic grades array
   if (allGrades.length === 0 && data.grades && Array.isArray(data.grades)) {
-    data.grades.forEach(grade => {
+    data.grades.forEach((grade) => {
       if (grade.subject && grade.score !== undefined) {
         allGrades.push({
           subject: grade.subject,
           score: grade.score,
-          examType: 'basic'
+          examType: "basic",
         });
       }
     });
   }
-  
+
   return allGrades;
 }
 
@@ -83,15 +89,15 @@ async function getStudents(req, res, next) {
   try {
     const { risk_level, page = 1, limit = 50 } = req.query;
     const { role, student_id, ward_student_id } = req.user;
-    
+
     let filter = {};
-    
+
     // Apply role-based filtering
     if (role === "student") {
       filter.student_id = student_id;
     }
     // Local guardians, counselors, faculty, and exam-department can see all students
-    
+
     if (risk_level) filter.risk_level = risk_level;
 
     const skip = (page - 1) * limit;
@@ -102,11 +108,15 @@ async function getStudents(req, res, next) {
       .lean();
 
     // Filter risk assessment visibility based on role
-    students = students.map(student => {
+    students = students.map((student) => {
       const filteredStudent = { ...student };
-      
+
       // Only Faculty, Counselor, Local Guardian, and Exam Department can see risk assessment
-      if (!["faculty", "counselor", "local-guardian", "exam-department"].includes(role)) {
+      if (
+        !["faculty", "counselor", "local-guardian", "exam-department"].includes(
+          role,
+        )
+      ) {
         // Remove risk assessment data for students and parents
         delete filteredStudent.risk_level;
         delete filteredStudent.risk_score;
@@ -114,7 +124,7 @@ async function getStudents(req, res, next) {
         delete filteredStudent.explanation;
         delete filteredStudent.recommendations;
       }
-      
+
       return filteredStudent;
     });
 
@@ -143,17 +153,20 @@ async function getStudentById(req, res, next) {
     const student = await Student.findOne({ student_id: studentId }).lean();
     if (!student)
       return res.status(404).json({ success: false, error: "Not found" });
-    
-    console.log('getStudentById - student data:', {
+
+    console.log("getStudentById - student data:", {
       risk_level: student.risk_level,
       risk_score: student.risk_score,
       risk_factors: student.risk_factors,
       explanation: student.explanation,
-      recommendations: student.recommendations
+      recommendations: student.recommendations,
     });
-    
-    console.log('getStudentById - full student object keys:', Object.keys(student));
-    
+
+    console.log(
+      "getStudentById - full student object keys:",
+      Object.keys(student),
+    );
+
     res.json({ success: true, student });
   } catch (err) {
     next(err);
@@ -166,21 +179,25 @@ async function getStudentById(req, res, next) {
 async function dashboardSummary(req, res, next) {
   try {
     const { role } = req.user;
-    
+
     // Only Faculty, Counselor, Local Guardian, and Exam Department can see risk assessment summary
-    if (!["faculty", "counselor", "local-guardian", "exam-department"].includes(role)) {
+    if (
+      !["faculty", "counselor", "local-guardian", "exam-department"].includes(
+        role,
+      )
+    ) {
       // For students and parents, return basic summary without risk data
       const totalStudents = await Student.countDocuments();
       const avgAttendance = await Student.aggregate([
-        { $group: { _id: null, avgAttendance: { $avg: "$attendance_rate" } } }
+        { $group: { _id: null, avgAttendance: { $avg: "$attendance_rate" } } },
       ]);
-      
-      return res.json({ 
-        success: true, 
-        summary: { 
-          total: totalStudents, 
-          avgAttendance: avgAttendance[0]?.avgAttendance?.toFixed(1) || 0 
-        } 
+
+      return res.json({
+        success: true,
+        summary: {
+          total: totalStudents,
+          avgAttendance: avgAttendance[0]?.avgAttendance?.toFixed(1) || 0,
+        },
       });
     }
 
@@ -190,16 +207,29 @@ async function dashboardSummary(req, res, next) {
         $group: {
           _id: null,
           total: { $sum: 1 },
-          examComplete: { $sum: { $cond: ["$data_completion.exam_department", 1, 0] } },
-          facultyComplete: { $sum: { $cond: ["$data_completion.faculty", 1, 0] } },
-          guardianComplete: { $sum: { $cond: ["$data_completion.local_guardian", 1, 0] } },
+          examComplete: {
+            $sum: { $cond: ["$data_completion.exam_department", 1, 0] },
+          },
+          facultyComplete: {
+            $sum: { $cond: ["$data_completion.faculty", 1, 0] },
+          },
+          guardianComplete: {
+            $sum: { $cond: ["$data_completion.local_guardian", 1, 0] },
+          },
           allComplete: { $sum: { $cond: ["$data_complete", 1, 0] } },
-          avgAttendance: { $avg: "$attendance_rate" }
-        }
-      }
+          avgAttendance: { $avg: "$attendance_rate" },
+        },
+      },
     ]);
 
-    const stats = dataCompletionStats[0] || { total: 0, examComplete: 0, facultyComplete: 0, guardianComplete: 0, allComplete: 0, avgAttendance: 0 };
+    const stats = dataCompletionStats[0] || {
+      total: 0,
+      examComplete: 0,
+      facultyComplete: 0,
+      guardianComplete: 0,
+      allComplete: 0,
+      avgAttendance: 0,
+    };
 
     // Get risk level distribution for completed students only
     const riskAgg = await Student.aggregate([
@@ -207,25 +237,34 @@ async function dashboardSummary(req, res, next) {
       {
         $group: {
           _id: "$risk_level",
-          count: { $sum: 1 }
-        }
-      }
+          count: { $sum: 1 },
+        },
+      },
     ]);
 
-    const summary = { 
-      total: stats.total, 
-      high: 0, 
-      medium: 0, 
-      low: 0, 
+    const summary = {
+      total: stats.total,
+      high: 0,
+      medium: 0,
+      low: 0,
       avgAttendance: stats.avgAttendance?.toFixed(1) || 0,
       // Data completion status
       dataCompletion: {
-        exam_department: { completed: stats.examComplete, pending: stats.total - stats.examComplete },
-        faculty: { completed: stats.facultyComplete, pending: stats.total - stats.facultyComplete },
-        local_guardian: { completed: stats.guardianComplete, pending: stats.total - stats.guardianComplete },
+        exam_department: {
+          completed: stats.examComplete,
+          pending: stats.total - stats.examComplete,
+        },
+        faculty: {
+          completed: stats.facultyComplete,
+          pending: stats.total - stats.facultyComplete,
+        },
+        local_guardian: {
+          completed: stats.guardianComplete,
+          pending: stats.total - stats.guardianComplete,
+        },
         all_complete: stats.allComplete,
-        pending_calculation: stats.total - stats.allComplete
-      }
+        pending_calculation: stats.total - stats.allComplete,
+      },
     };
 
     riskAgg.forEach((item) => {
@@ -246,17 +285,19 @@ async function recalculateRisk(req, res, next) {
     const { studentId } = req.params;
     console.log(`=== RECALCULATE RISK START ===`);
     console.log(`Recalculating risk for student: ${studentId}`);
-    
+
     const student = await Student.findOne({ student_id: studentId });
     if (!student) {
       console.log(`Student ${studentId} not found`);
       return res.status(404).json({ success: false, error: "Not found" });
     }
-    
-    console.log(`Found student: ${student.name}, current risk: ${student.risk_level}`);
+
+    console.log(
+      `Found student: ${student.name}, current risk: ${student.risk_level}`,
+    );
 
     const data = student.toObject();
-    
+
     // Rule-based risk calculation
     const baseRisk = await riskCalculator.calculateRisk(data);
 
@@ -266,17 +307,18 @@ async function recalculateRisk(req, res, next) {
       config = new Config();
       await config.save();
     }
-    
+
     // Get all grades from detailed grade fields
     const allGrades = getAllGradesFromDetailedFields(data);
     const passCriteria = config.passCriteria || 60;
-    
+
     // Prepare ML features with dynamic pass criteria
     const mlFeatures = {
       attendance_rate: data.attendance_rate || 0,
-      avg_grade: allGrades.length > 0
-        ? allGrades.reduce((sum, g) => sum + g.score, 0) / allGrades.length
-        : 0,
+      avg_grade:
+        allGrades.length > 0
+          ? allGrades.reduce((sum, g) => sum + g.score, 0) / allGrades.length
+          : 0,
       failing_count: allGrades.filter((g) => g.score < passCriteria).length,
       days_overdue: data.days_overdue || 0,
       attempts: 0, // Attempts removed from system
@@ -287,20 +329,29 @@ async function recalculateRisk(req, res, next) {
     // ML risk prediction
     let mlResult = { risk_level: "low", risk_score: 0 };
     try {
-      console.log(`Recalculating ML risk for ${data.student_id} with features:`, mlFeatures);
+      console.log(
+        `Recalculating ML risk for ${data.student_id} with features:`,
+        mlFeatures,
+      );
       mlResult = await predictRisk(mlFeatures);
       console.log(`ML recalculation result for ${data.student_id}:`, mlResult);
-      
+
       // Validate ML result
       if (!mlResult || !mlResult.risk_level) {
         console.error(`Invalid ML result for ${data.student_id}:`, mlResult);
         throw new Error("Invalid ML result");
       }
     } catch (error) {
-      console.error(`ML recalculation failed for ${data.student_id}:`, error.message);
+      console.error(
+        `ML recalculation failed for ${data.student_id}:`,
+        error.message,
+      );
       console.error(`ML recalculation error details:`, error);
       // Use rule-based as fallback
-      mlResult = { risk_level: baseRisk.risk_level, risk_score: baseRisk.risk_score };
+      mlResult = {
+        risk_level: baseRisk.risk_level,
+        risk_score: baseRisk.risk_score,
+      };
     }
 
     // Combine ML and rule-based results
@@ -315,7 +366,10 @@ async function recalculateRisk(req, res, next) {
     console.log(`Final recalculated risk for ${data.student_id}:`, finalRisk);
 
     // Update student with new risk data
-    console.log(`Updating student ${data.student_id} with risk data:`, finalRisk);
+    console.log(
+      `Updating student ${data.student_id} with risk data:`,
+      finalRisk,
+    );
     student.risk_level = finalRisk.risk_level;
     student.risk_score = finalRisk.risk_score;
     student.risk_factors = finalRisk.risk_factors;
@@ -323,7 +377,7 @@ async function recalculateRisk(req, res, next) {
     student.recommendations = finalRisk.recommendations;
     student.failed_subjects = mlFeatures.failing_count; // Add failed subjects count
     student.last_updated = new Date();
-    
+
     console.log(`Student before save - risk_score: ${student.risk_score}`);
     await student.save();
     console.log(`Student after save - risk_score: ${student.risk_score}`);
@@ -340,14 +394,19 @@ async function recalculateRisk(req, res, next) {
 async function createAction(req, res, next) {
   try {
     const { studentId } = req.params;
-    const { description, counselor_notes, priority = "medium", due_date } = req.body;
+    const {
+      description,
+      counselor_notes,
+      priority = "medium",
+      due_date,
+    } = req.body;
     const { userId, role } = req.user;
 
     // Only counselors can create actions
     if (role !== "counselor") {
       return res.status(403).json({
         success: false,
-        error: "Only counselors can create actions"
+        error: "Only counselors can create actions",
       });
     }
 
@@ -355,7 +414,7 @@ async function createAction(req, res, next) {
     if (!student) {
       return res.status(404).json({
         success: false,
-        error: "Student not found"
+        error: "Student not found",
       });
     }
 
@@ -365,7 +424,7 @@ async function createAction(req, res, next) {
       priority,
       due_date: due_date ? new Date(due_date) : undefined,
       created_by: userId,
-      status: "pending"
+      status: "pending",
     };
 
     student.actions.push(action);
@@ -375,14 +434,14 @@ async function createAction(req, res, next) {
     try {
       await sendActionApprovalEmail(action, student, student.parent_email);
     } catch (emailError) {
-      console.error('Failed to send action approval email:', emailError);
+      console.error("Failed to send action approval email:", emailError);
       // Don't fail the request if email fails
     }
 
     res.status(201).json({
       success: true,
       message: "Action created successfully",
-      action: student.actions[student.actions.length - 1]
+      action: student.actions[student.actions.length - 1],
     });
   } catch (err) {
     next(err);
@@ -402,7 +461,7 @@ async function updateAction(req, res, next) {
     if (role !== "local-guardian") {
       return res.status(403).json({
         success: false,
-        error: "Only guardians can approve or reject actions"
+        error: "Only guardians can approve or reject actions",
       });
     }
 
@@ -410,7 +469,7 @@ async function updateAction(req, res, next) {
     if (!student) {
       return res.status(404).json({
         success: false,
-        error: "Student not found"
+        error: "Student not found",
       });
     }
 
@@ -418,14 +477,14 @@ async function updateAction(req, res, next) {
     if (!action) {
       return res.status(404).json({
         success: false,
-        error: "Action not found"
+        error: "Action not found",
       });
     }
 
     if (action.status !== "pending") {
       return res.status(400).json({
         success: false,
-        error: "Action has already been processed"
+        error: "Action has already been processed",
       });
     }
 
@@ -446,14 +505,14 @@ async function updateAction(req, res, next) {
         await sendActionStatusUpdateEmail(action, student, counselor.email);
       }
     } catch (emailError) {
-      console.error('Failed to send action status update email:', emailError);
+      console.error("Failed to send action status update email:", emailError);
       // Don't fail the request if email fails
     }
 
     res.json({
       success: true,
       message: `Action ${status} successfully`,
-      action
+      action,
     });
   } catch (err) {
     next(err);
@@ -466,27 +525,19 @@ async function updateAction(req, res, next) {
 async function getActions(req, res, next) {
   try {
     const { studentId } = req.params;
-    const { role, ward_student_id } = req.user;
+    const { role } = req.user;
 
     const student = await Student.findOne({ student_id: studentId });
     if (!student) {
       return res.status(404).json({
         success: false,
-        error: "Student not found"
-      });
-    }
-
-    // Guardians can only see actions for their ward
-    if (role === "local-guardian" && studentId !== ward_student_id) {
-      return res.status(403).json({
-        success: false,
-        error: "Access denied"
+        error: "Student not found",
       });
     }
 
     res.json({
       success: true,
-      actions: student.actions
+      actions: student.actions,
     });
   } catch (err) {
     next(err);
@@ -505,7 +556,7 @@ async function deleteExamData(req, res, next) {
     if (role !== "exam-department") {
       return res.status(403).json({
         success: false,
-        error: "Only exam department can delete exam data"
+        error: "Only exam department can delete exam data",
       });
     }
 
@@ -513,7 +564,7 @@ async function deleteExamData(req, res, next) {
     if (!student) {
       return res.status(404).json({
         success: false,
-        error: "Student not found"
+        error: "Student not found",
       });
     }
 
@@ -524,21 +575,21 @@ async function deleteExamData(req, res, next) {
     student.mid_sem_grades = [];
     student.end_sem_grades = [];
     student.academic_history = [];
-    
+
     // Reset data completion status
     student.data_completion.exam_department = false;
     student.data_completion.last_updated = new Date();
-    
+
     // Reset overall completion status
     student.data_complete = false;
-    
+
     // Reset risk assessment since exam data is removed
     student.risk_level = "pending";
     student.risk_score = 0;
     student.risk_factors = [];
     student.explanation = [];
     student.recommendations = [];
-    
+
     student.last_updated = new Date();
     await student.save();
 
@@ -549,8 +600,8 @@ async function deleteExamData(req, res, next) {
         student_id: student.student_id,
         name: student.name,
         data_completion: student.data_completion,
-        data_complete: student.data_complete
-      }
+        data_complete: student.data_complete,
+      },
     });
   } catch (err) {
     next(err);
@@ -569,7 +620,7 @@ async function deleteAttendanceData(req, res, next) {
     if (role !== "faculty") {
       return res.status(403).json({
         success: false,
-        error: "Only faculty can delete attendance data"
+        error: "Only faculty can delete attendance data",
       });
     }
 
@@ -577,27 +628,27 @@ async function deleteAttendanceData(req, res, next) {
     if (!student) {
       return res.status(404).json({
         success: false,
-        error: "Student not found"
+        error: "Student not found",
       });
     }
 
     // Clear attendance data
     student.attendance_rate = 0;
-    
+
     // Reset data completion status
     student.data_completion.faculty = false;
     student.data_completion.last_updated = new Date();
-    
+
     // Reset overall completion status
     student.data_complete = false;
-    
+
     // Reset risk assessment since attendance data is removed
     student.risk_level = "pending";
     student.risk_score = 0;
     student.risk_factors = [];
     student.explanation = [];
     student.recommendations = [];
-    
+
     student.last_updated = new Date();
     await student.save();
 
@@ -608,8 +659,8 @@ async function deleteAttendanceData(req, res, next) {
         student_id: student.student_id,
         name: student.name,
         data_completion: student.data_completion,
-        data_complete: student.data_complete
-      }
+        data_complete: student.data_complete,
+      },
     });
   } catch (err) {
     next(err);
@@ -628,7 +679,7 @@ async function deleteFeesData(req, res, next) {
     if (role !== "local-guardian") {
       return res.status(403).json({
         success: false,
-        error: "Only local guardian can delete fees data"
+        error: "Only local guardian can delete fees data",
       });
     }
 
@@ -636,7 +687,7 @@ async function deleteFeesData(req, res, next) {
     if (!student) {
       return res.status(404).json({
         success: false,
-        error: "Student not found"
+        error: "Student not found",
       });
     }
 
@@ -646,21 +697,21 @@ async function deleteFeesData(req, res, next) {
     student.amount_due = 0;
     student.due_date = "";
     student.days_overdue = 0;
-    
+
     // Reset data completion status
     student.data_completion.local_guardian = false;
     student.data_completion.last_updated = new Date();
-    
+
     // Reset overall completion status
     student.data_complete = false;
-    
+
     // Reset risk assessment since fees data is removed
     student.risk_level = "pending";
     student.risk_score = 0;
     student.risk_factors = [];
     student.explanation = [];
     student.recommendations = [];
-    
+
     student.last_updated = new Date();
     await student.save();
 
@@ -671,8 +722,8 @@ async function deleteFeesData(req, res, next) {
         student_id: student.student_id,
         name: student.name,
         data_completion: student.data_completion,
-        data_complete: student.data_complete
-      }
+        data_complete: student.data_complete,
+      },
     });
   } catch (err) {
     next(err);
@@ -691,7 +742,8 @@ async function deleteStudentRecord(req, res, next) {
     if (role !== "counselor") {
       return res.status(403).json({
         success: false,
-        message: "Access denied. Only counselors can delete entire student records."
+        message:
+          "Access denied. Only counselors can delete entire student records.",
       });
     }
 
@@ -700,7 +752,7 @@ async function deleteStudentRecord(req, res, next) {
     if (!student) {
       return res.status(404).json({
         success: false,
-        message: "Student not found"
+        message: "Student not found",
       });
     }
 
@@ -708,7 +760,7 @@ async function deleteStudentRecord(req, res, next) {
     const deletedStudentInfo = {
       student_id: student.student_id,
       name: student.name,
-      email: student.email
+      email: student.email,
     };
 
     // Delete the entire student record
@@ -717,7 +769,7 @@ async function deleteStudentRecord(req, res, next) {
     res.json({
       success: true,
       message: "Student record deleted successfully",
-      deletedStudent: deletedStudentInfo
+      deletedStudent: deletedStudentInfo,
     });
   } catch (err) {
     next(err);
@@ -735,7 +787,8 @@ async function deleteAllStudentRecords(req, res, next) {
     if (role !== "counselor") {
       return res.status(403).json({
         success: false,
-        message: "Access denied. Only counselors can delete all student records."
+        message:
+          "Access denied. Only counselors can delete all student records.",
       });
     }
 
@@ -745,7 +798,7 @@ async function deleteAllStudentRecords(req, res, next) {
     if (studentCount === 0) {
       return res.status(404).json({
         success: false,
-        message: "No students found to delete"
+        message: "No students found to delete",
       });
     }
 
@@ -755,7 +808,7 @@ async function deleteAllStudentRecords(req, res, next) {
     res.json({
       success: true,
       message: `Successfully deleted ${result.deletedCount} student records`,
-      deletedCount: result.deletedCount
+      deletedCount: result.deletedCount,
     });
   } catch (err) {
     next(err);
@@ -769,11 +822,11 @@ async function deleteAllStudentRecords(req, res, next) {
 async function deleteAllStudentRecords(req, res, next) {
   try {
     const result = await Student.deleteMany({});
-    
+
     res.json({
       success: true,
       message: `Successfully deleted ${result.deletedCount || 0} student records`,
-      deletedCount: result.deletedCount || 0
+      deletedCount: result.deletedCount || 0,
     });
   } catch (err) {
     next(err);
@@ -785,30 +838,38 @@ async function deleteAllStudentRecords(req, res, next) {
  */
 async function recalculateAllRisks(req, res, next) {
   try {
-    console.log('🔄 Manual risk recalculation triggered...');
-    
+    console.log("🔄 Manual risk recalculation triggered...");
+
     // Find all students
     const students = await Student.find({});
     console.log(`Found ${students.length} students to recalculate`);
-    
+
     let successCount = 0;
     let errorCount = 0;
-    
+
     for (const student of students) {
       try {
-        console.log(`🔄 Processing ${student.student_id} (${student.name}) - Data Complete: ${student.data_complete}`);
-        
+        console.log(
+          `🔄 Processing ${student.student_id} (${student.name}) - Data Complete: ${student.data_complete}`,
+        );
+
         if (student.data_complete) {
           // Calculate new risk using updated settings
-          const riskAssessment = await riskCalculator.calculateRisk(student.toObject());
-          
+          const riskAssessment = await riskCalculator.calculateRisk(
+            student.toObject(),
+          );
+
           if (riskAssessment) {
             // Calculate failed subjects count
-            const allGrades = getAllGradesFromDetailedFields(student.toObject());
+            const allGrades = getAllGradesFromDetailedFields(
+              student.toObject(),
+            );
             const config = await Config.findOne();
             const passCriteria = config?.passCriteria || 60;
-            const failingCount = allGrades.filter(grade => grade.score < passCriteria).length;
-            
+            const failingCount = allGrades.filter(
+              (grade) => grade.score < passCriteria,
+            ).length;
+
             // Update student with new risk data
             student.risk_level = riskAssessment.risk_level;
             student.risk_score = riskAssessment.risk_score;
@@ -817,13 +878,17 @@ async function recalculateAllRisks(req, res, next) {
             student.recommendations = riskAssessment.recommendations;
             student.failed_subjects = failingCount; // Add failed subjects count
             student.last_updated = new Date();
-            
+
             await student.save();
             successCount++;
-            
-            console.log(`✅ Updated risk for ${student.student_id}: ${riskAssessment.risk_level} (${riskAssessment.risk_score})`);
+
+            console.log(
+              `✅ Updated risk for ${student.student_id}: ${riskAssessment.risk_level} (${riskAssessment.risk_score})`,
+            );
           } else {
-            console.log(`⚠️ No risk assessment returned for ${student.student_id}`);
+            console.log(
+              `⚠️ No risk assessment returned for ${student.student_id}`,
+            );
           }
         } else {
           // Clear risk data for incomplete students
@@ -833,28 +898,34 @@ async function recalculateAllRisks(req, res, next) {
           student.explanation = [];
           student.recommendations = [];
           student.last_updated = new Date();
-          
+
           await student.save();
           successCount++;
-          
-          console.log(`⏳ Cleared risk data for ${student.student_id} - data incomplete`);
+
+          console.log(
+            `⏳ Cleared risk data for ${student.student_id} - data incomplete`,
+          );
         }
       } catch (error) {
-        console.error(`❌ Error processing ${student.student_id}:`, error.message);
+        console.error(
+          `❌ Error processing ${student.student_id}:`,
+          error.message,
+        );
         errorCount++;
       }
     }
-    
-    console.log(`🔄 Manual risk recalculation completed: ${successCount} successful, ${errorCount} errors`);
-    
+
+    console.log(
+      `🔄 Manual risk recalculation completed: ${successCount} successful, ${errorCount} errors`,
+    );
+
     res.json({
       success: true,
       message: `Risk recalculation completed: ${successCount} successful, ${errorCount} errors`,
-      results: { successCount, errorCount, total: students.length }
+      results: { successCount, errorCount, total: students.length },
     });
-    
   } catch (error) {
-    console.error('❌ Error in recalculateAllRisks:', error);
+    console.error("❌ Error in recalculateAllRisks:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 }

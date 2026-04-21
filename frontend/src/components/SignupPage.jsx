@@ -1,27 +1,26 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 const SignupPage = () => {
   const [formData, setFormData] = useState({
-    username: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    role: 'student',
-    student_id: '',
-    ward_student_id: '',
-    department: ''
+    username: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    role: "student",
+    student_id: "",
+    department: "",
   });
   const [errors, setErrors] = useState({});
-  
+
   const { register, isAuthenticated, loading, error, clearError } = useAuth();
   const navigate = useNavigate();
 
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard');
+      navigate("/dashboard");
     }
   }, [isAuthenticated, navigate]);
 
@@ -32,103 +31,100 @@ const SignupPage = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
-    
+
     // Clear error for this field
     if (errors[name]) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        [name]: ''
+        [name]: "",
       }));
     }
   };
 
   const validateForm = () => {
     const newErrors = {};
-    
+
     if (!formData.username) {
-      newErrors.username = 'Username is required';
+      newErrors.username = "Username is required";
     } else if (formData.username.length < 3) {
-      newErrors.username = 'Username must be at least 3 characters';
+      newErrors.username = "Username must be at least 3 characters";
     }
-    
+
     if (!formData.email) {
-      newErrors.email = 'Email is required';
+      newErrors.email = "Email is required";
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
+      newErrors.email = "Email is invalid";
     }
-    
+
     if (!formData.password) {
-      newErrors.password = 'Password is required';
+      newErrors.password = "Password is required";
     } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+      newErrors.password = "Password must be at least 6 characters";
     }
-    
+
     if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
+      newErrors.confirmPassword = "Passwords do not match";
     }
-    
-    if (formData.role === 'student' && !formData.student_id) {
-      newErrors.student_id = 'Student ID is required for student role';
+
+    if (formData.role === "student" && !formData.student_id) {
+      newErrors.student_id = "Student ID is required for student role";
     }
-    
-    if (formData.role === 'parent' && !formData.ward_student_id) {
-      newErrors.ward_student_id = 'Ward Student ID is required for parent role';
+
+    if (formData.role === "parent" && !formData.ward_student_id) {
+      newErrors.ward_student_id = "Ward Student ID is required for parent role";
     }
-    
-    if (formData.role === 'local-guardian' && !formData.ward_student_id) {
-      newErrors.ward_student_id = 'Ward Student ID is required for guardian role';
+
+    if (formData.role === "faculty" && !formData.department) {
+      newErrors.department = "Department is required for faculty role";
     }
-    
-    if (formData.role === 'faculty' && !formData.department) {
-      newErrors.department = 'Department is required for faculty role';
-    }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
-    
+
     // Prepare registration data based on role
     const registrationData = {
       username: formData.username,
       email: formData.email,
       password: formData.password,
-      role: formData.role
+      role: formData.role,
     };
-    
-    if (formData.role === 'student') {
+
+    if (formData.role === "student") {
       registrationData.student_id = formData.student_id;
-    } else if (formData.role === 'parent') {
+    } else if (formData.role === "parent") {
       registrationData.ward_student_id = formData.ward_student_id;
-    } else if (formData.role === 'local-guardian') {
-      registrationData.ward_student_id = formData.ward_student_id;
-    } else if (formData.role === 'faculty') {
+    } else if (formData.role === "faculty") {
       registrationData.department = formData.department;
     }
-    
+
     const result = await register(registrationData);
-    
+
     if (result.success) {
-      navigate('/dashboard');
+      navigate("/dashboard");
     }
   };
 
   const renderRoleSpecificFields = () => {
     switch (formData.role) {
-      case 'student':
+      case "student":
         return (
           <div>
-            <label htmlFor="student_id" className="block text-sm font-medium text-gray-700">
+            <label
+              htmlFor="student_id"
+              className="block text-sm font-medium text-gray-700"
+            >
               Student ID
             </label>
             <input
@@ -137,7 +133,7 @@ const SignupPage = () => {
               type="text"
               required
               className={`mt-1 appearance-none relative block w-full px-3 py-2 border ${
-                errors.student_id ? 'border-red-300' : 'border-gray-300'
+                errors.student_id ? "border-red-300" : "border-gray-300"
               } placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
               placeholder="Enter your Student ID"
               value={formData.student_id}
@@ -148,11 +144,14 @@ const SignupPage = () => {
             )}
           </div>
         );
-      
-      case 'parent':
+
+      case "parent":
         return (
           <div>
-            <label htmlFor="ward_student_id" className="block text-sm font-medium text-gray-700">
+            <label
+              htmlFor="ward_student_id"
+              className="block text-sm font-medium text-gray-700"
+            >
               Child's Student ID
             </label>
             <input
@@ -161,49 +160,31 @@ const SignupPage = () => {
               type="text"
               required
               className={`mt-1 appearance-none relative block w-full px-3 py-2 border ${
-                errors.ward_student_id ? 'border-red-300' : 'border-gray-300'
+                errors.ward_student_id ? "border-red-300" : "border-gray-300"
               } placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
               placeholder="Enter your child's Student ID"
               value={formData.ward_student_id}
               onChange={handleChange}
             />
             {errors.ward_student_id && (
-              <p className="mt-1 text-sm text-red-600">{errors.ward_student_id}</p>
+              <p className="mt-1 text-sm text-red-600">
+                {errors.ward_student_id}
+              </p>
             )}
             <p className="mt-1 text-sm text-gray-500">
-              Enter the Student ID of your child to manage their actions and progress.
+              Enter the Student ID of your child to manage their actions and
+              progress.
             </p>
           </div>
         );
-      
-      case 'local-guardian':
+
+      case "faculty":
         return (
           <div>
-            <label htmlFor="ward_student_id" className="block text-sm font-medium text-gray-700">
-              Ward's Student ID
-            </label>
-            <input
-              id="ward_student_id"
-              name="ward_student_id"
-              type="text"
-              required
-              className={`mt-1 appearance-none relative block w-full px-3 py-2 border ${
-                errors.ward_student_id ? 'border-red-300' : 'border-gray-300'
-              } placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
-              placeholder="Enter your ward's Student ID"
-              value={formData.ward_student_id}
-              onChange={handleChange}
-            />
-            {errors.ward_student_id && (
-              <p className="mt-1 text-sm text-red-600">{errors.ward_student_id}</p>
-            )}
-          </div>
-        );
-      
-      case 'faculty':
-        return (
-          <div>
-            <label htmlFor="department" className="block text-sm font-medium text-gray-700">
+            <label
+              htmlFor="department"
+              className="block text-sm font-medium text-gray-700"
+            >
               Department
             </label>
             <input
@@ -212,7 +193,7 @@ const SignupPage = () => {
               type="text"
               required
               className={`mt-1 appearance-none relative block w-full px-3 py-2 border ${
-                errors.department ? 'border-red-300' : 'border-gray-300'
+                errors.department ? "border-red-300" : "border-gray-300"
               } placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
               placeholder="Enter your department"
               value={formData.department}
@@ -223,7 +204,7 @@ const SignupPage = () => {
             )}
           </div>
         );
-      
+
       default:
         return null;
     }
@@ -240,11 +221,14 @@ const SignupPage = () => {
             Student Early Warning System
           </p>
         </div>
-        
+
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="username"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Username
               </label>
               <input
@@ -253,7 +237,7 @@ const SignupPage = () => {
                 type="text"
                 required
                 className={`mt-1 appearance-none relative block w-full px-3 py-2 border ${
-                  errors.username ? 'border-red-300' : 'border-gray-300'
+                  errors.username ? "border-red-300" : "border-gray-300"
                 } placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
                 placeholder="Enter username"
                 value={formData.username}
@@ -265,7 +249,10 @@ const SignupPage = () => {
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Email address
               </label>
               <input
@@ -274,7 +261,7 @@ const SignupPage = () => {
                 type="email"
                 required
                 className={`mt-1 appearance-none relative block w-full px-3 py-2 border ${
-                  errors.email ? 'border-red-300' : 'border-gray-300'
+                  errors.email ? "border-red-300" : "border-gray-300"
                 } placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
                 placeholder="Enter email address"
                 value={formData.email}
@@ -286,7 +273,10 @@ const SignupPage = () => {
             </div>
 
             <div>
-              <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="role"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Role
               </label>
               <select
@@ -308,7 +298,10 @@ const SignupPage = () => {
             {renderRoleSpecificFields()}
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Password
               </label>
               <input
@@ -317,7 +310,7 @@ const SignupPage = () => {
                 type="password"
                 required
                 className={`mt-1 appearance-none relative block w-full px-3 py-2 border ${
-                  errors.password ? 'border-red-300' : 'border-gray-300'
+                  errors.password ? "border-red-300" : "border-gray-300"
                 } placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
                 placeholder="Enter password"
                 value={formData.password}
@@ -329,7 +322,10 @@ const SignupPage = () => {
             </div>
 
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="confirmPassword"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Confirm Password
               </label>
               <input
@@ -338,14 +334,16 @@ const SignupPage = () => {
                 type="password"
                 required
                 className={`mt-1 appearance-none relative block w-full px-3 py-2 border ${
-                  errors.confirmPassword ? 'border-red-300' : 'border-gray-300'
+                  errors.confirmPassword ? "border-red-300" : "border-gray-300"
                 } placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
                 placeholder="Confirm password"
                 value={formData.confirmPassword}
                 onChange={handleChange}
               />
               {errors.confirmPassword && (
-                <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.confirmPassword}
+                </p>
               )}
             </div>
           </div>
@@ -354,9 +352,7 @@ const SignupPage = () => {
             <div className="rounded-md bg-red-50 p-4">
               <div className="flex">
                 <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">
-                    {error}
-                  </h3>
+                  <h3 className="text-sm font-medium text-red-800">{error}</h3>
                 </div>
               </div>
             </div>
@@ -368,13 +364,13 @@ const SignupPage = () => {
               disabled={loading}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Creating account...' : 'Create account'}
+              {loading ? "Creating account..." : "Create account"}
             </button>
           </div>
 
           <div className="text-center">
             <p className="text-sm text-gray-600">
-              Already have an account?{' '}
+              Already have an account?{" "}
               <Link
                 to="/login"
                 className="font-medium text-indigo-600 hover:text-indigo-500"

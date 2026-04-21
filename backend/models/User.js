@@ -17,7 +17,10 @@ const UserSchema = new mongoose.Schema(
       unique: true,
       trim: true,
       lowercase: true,
-      match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, "Please enter a valid email"],
+      match: [
+        /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
+        "Please enter a valid email",
+      ],
     },
     password: {
       type: String,
@@ -27,13 +30,20 @@ const UserSchema = new mongoose.Schema(
     role: {
       type: String,
       required: true,
-      enum: ["counselor", "faculty", "exam-department", "student", "local-guardian", "parent"],
+      enum: [
+        "counselor",
+        "faculty",
+        "exam-department",
+        "student",
+        "local-guardian",
+        "parent",
+      ],
       default: "student",
     },
     // For students - link to student records
     student_id: {
       type: String,
-      required: function() {
+      required: function () {
         return this.role === "student";
       },
       trim: true,
@@ -41,7 +51,7 @@ const UserSchema = new mongoose.Schema(
     // For parents - link to their child's student record
     ward_student_id: {
       type: String,
-      required: function() {
+      required: function () {
         return this.role === "parent";
       },
       trim: true,
@@ -49,7 +59,7 @@ const UserSchema = new mongoose.Schema(
     // For faculty - department information
     department: {
       type: String,
-      required: function() {
+      required: function () {
         return this.role === "faculty";
       },
       trim: true,
@@ -70,13 +80,13 @@ const UserSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 // Hash password before saving
 UserSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
-  
+
   try {
     const salt = await bcrypt.genSalt(12);
     this.password = await bcrypt.hash(this.password, salt);
@@ -101,8 +111,6 @@ UserSchema.methods.toJSON = function () {
 };
 
 // Index for efficient queries
-UserSchema.index({ email: 1 });
-UserSchema.index({ username: 1 });
 UserSchema.index({ role: 1 });
 UserSchema.index({ student_id: 1 });
 
