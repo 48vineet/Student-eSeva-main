@@ -3,7 +3,10 @@ const Student = require("../models/Student");
 const riskCalculator = require("../services/riskCalculator");
 const { predictRisk } = require("../services/mlService");
 const Config = require("../models/Config");
-const { sendStudentNotificationEmail, sendParentNotificationEmail } = require("../services/emailService");
+const {
+  sendStudentNotificationEmail,
+  sendParentNotificationEmail,
+} = require("../services/emailService");
 
 /**
  * Handle file upload with role-based data processing
@@ -14,15 +17,17 @@ async function uploadController(req, res, next) {
     console.log("Upload request received:", {
       role,
       hasFile: !!req.file,
-      fileInfo: req.file ? {
-        originalname: req.file.originalname,
-        mimetype: req.file.mimetype,
-        size: req.file.size
-      } : null,
+      fileInfo: req.file
+        ? {
+            originalname: req.file.originalname,
+            mimetype: req.file.mimetype,
+            size: req.file.size,
+          }
+        : null,
       body: req.body,
-      headers: req.headers
+      headers: req.headers,
     });
-    
+
     if (!req.file)
       return res
         .status(400)
@@ -44,7 +49,7 @@ async function uploadController(req, res, next) {
     } else {
       return res.status(403).json({
         success: false,
-        error: "Insufficient permissions for file upload"
+        error: "Insufficient permissions for file upload",
       });
     }
   } catch (error) {
@@ -58,7 +63,7 @@ async function uploadController(req, res, next) {
 async function processStudentDataUpload(req, res, next) {
   try {
     console.log("Processing student data upload with emails...");
-    
+
     const rows = await parseFile(req.file.buffer, req.file.originalname);
     const createdStudents = [];
     let emailCount = 0;
@@ -68,25 +73,32 @@ async function processStudentDataUpload(req, res, next) {
         continue;
       }
 
-      const student_id = extractTextValue(row["Student ID"] || row["student_id"]);
+      const student_id = extractTextValue(
+        row["Student ID"] || row["student_id"],
+      );
       const name = extractTextValue(row["Student Name"] || row["name"]);
       const attendance_rate = parseAttendanceRate(
-        extractTextValue(row["Attendance Rate"] || row["attendance_rate"] || row["Attendance"] || row["attendance"] || row["Attendance %"]) || 0
+        extractTextValue(row["Attendance"]) || 0,
       );
       const email = extractTextValue(row["Student Email"] || row["email"]);
-      const parent_email = extractTextValue(row["Parent Email"] || row["parent_email"]);
+      const parent_email = extractTextValue(
+        row["Parent Email"] || row["parent_email"],
+      );
 
       if (student_id && name && email && parent_email) {
         // Check if student already exists
         const existingStudent = await Student.findOne({ student_id });
-        
+
         let student;
-        
+
         if (existingStudent) {
           // Update existing student - preserve exam data and other flags
           console.log(`🔍 Faculty updating existing student ${student_id}`);
-          console.log(`🔍 Current exam_department flag:`, existingStudent.data_completion.exam_department);
-          
+          console.log(
+            `🔍 Current exam_department flag:`,
+            existingStudent.data_completion.exam_department,
+          );
+
           const updateData = {
             $set: {
               name,
@@ -95,20 +107,19 @@ async function processStudentDataUpload(req, res, next) {
               attendance_rate,
               last_updated: new Date(),
               "data_completion.faculty": true,
-              "data_completion.last_updated": new Date()
-            }
+              "data_completion.last_updated": new Date(),
+            },
           };
-          
-          student = await Student.findOneAndUpdate(
-            { student_id },
-            updateData,
-            { new: true, runValidators: true }
-          );
-          
+
+          student = await Student.findOneAndUpdate({ student_id }, updateData, {
+            new: true,
+            runValidators: true,
+          });
+
           console.log(`🔍 After faculty update for ${student_id}:`, {
             exam_department: student.data_completion.exam_department,
             faculty: student.data_completion.faculty,
-            local_guardian: student.data_completion.local_guardian
+            local_guardian: student.data_completion.local_guardian,
           });
         } else {
           // Create new student if doesn't exist
@@ -131,32 +142,38 @@ async function processStudentDataUpload(req, res, next) {
               exam_department: false,
               faculty: true, // Faculty data is provided
               local_guardian: false,
-              last_updated: new Date()
+              last_updated: new Date(),
             },
             data_complete: false,
-            last_updated: new Date()
+            last_updated: new Date(),
           };
 
           student = await Student.create(studentData);
         }
-        
+
         // Check if all data is complete
-        student.data_complete = student.data_completion.exam_department && 
-                               student.data_completion.faculty && 
-                               student.data_completion.local_guardian;
-        
-        console.log(`🔍 Data completion check for ${student_id} (student data upload):`, {
-          exam_department: student.data_completion.exam_department,
-          faculty: student.data_completion.faculty,
-          local_guardian: student.data_completion.local_guardian,
-          data_complete: student.data_complete
-        });
-        
+        student.data_complete =
+          student.data_completion.exam_department &&
+          student.data_completion.faculty &&
+          student.data_completion.local_guardian;
+
+        console.log(
+          `🔍 Data completion check for ${student_id} (student data upload):`,
+          {
+            exam_department: student.data_completion.exam_department,
+            faculty: student.data_completion.faculty,
+            local_guardian: student.data_completion.local_guardian,
+            data_complete: student.data_complete,
+          },
+        );
+
         // Only calculate risk if ALL data is complete (exam + faculty + guardian)
         if (student.data_complete) {
           try {
-            console.log(`All data complete for ${student_id}. Calculating risk assessment...`);
-            
+            console.log(
+              `All data complete for ${student_id}. Calculating risk assessment...`,
+            );
+
             const riskAssessment = await riskCalculator.calculateRisk(student);
             if (riskAssessment) {
               student.risk_level = riskAssessment.risk_level;
@@ -164,23 +181,29 @@ async function processStudentDataUpload(req, res, next) {
               student.risk_factors = riskAssessment.risk_factors;
               student.explanation = riskAssessment.explanation;
               student.recommendations = riskAssessment.recommendations;
-              
+
               console.log(`Risk calculated for ${student_id}:`, {
                 risk_level: riskAssessment.risk_level,
                 risk_score: riskAssessment.risk_score,
-                factors: riskAssessment.risk_factors
+                factors: riskAssessment.risk_factors,
               });
             }
           } catch (riskError) {
-            console.error(`Failed to calculate risk for student ${student_id}:`, riskError);
+            console.error(
+              `Failed to calculate risk for student ${student_id}:`,
+              riskError,
+            );
             // Continue processing even if risk calculation fails
           }
         } else {
-          console.log(`⏳ Risk calculation pending for ${student_id}. Missing data from:`, {
-            exam_department: student.data_completion.exam_department,
-            faculty: student.data_completion.faculty,
-            local_guardian: student.data_completion.local_guardian
-          });
+          console.log(
+            `⏳ Risk calculation pending for ${student_id}. Missing data from:`,
+            {
+              exam_department: student.data_completion.exam_department,
+              faculty: student.data_completion.faculty,
+              local_guardian: student.data_completion.local_guardian,
+            },
+          );
           // Ensure risk level is set to pending when data is incomplete
           student.risk_level = "pending";
           student.risk_score = 0;
@@ -188,15 +211,16 @@ async function processStudentDataUpload(req, res, next) {
           student.explanation = [];
           student.recommendations = [];
         }
-        
+
         // Save the student with all updates
         await student.save();
-        
+
         createdStudents.push(student);
 
         // Only send emails if explicitly requested via send_emails parameter
-        const sendEmails = req.body.send_emails === 'true' || req.body.send_emails === true;
-        
+        const sendEmails =
+          req.body.send_emails === "true" || req.body.send_emails === true;
+
         if (sendEmails) {
           try {
             // Send email to student
@@ -205,7 +229,7 @@ async function processStudentDataUpload(req, res, next) {
               studentName: name,
               studentId: student_id,
               attendanceRate: attendance_rate,
-              message: `Your attendance rate is ${attendance_rate}%. Please review the actions taken by the faculty.`
+              message: `Your attendance rate is ${attendance_rate}%. Please review the actions taken by the faculty.`,
             });
             emailCount++;
 
@@ -215,27 +239,32 @@ async function processStudentDataUpload(req, res, next) {
               studentName: name,
               studentId: student_id,
               attendanceRate: attendance_rate,
-              message: `Your child ${name}'s attendance rate is ${attendance_rate}%. Please review and take necessary action.`
+              message: `Your child ${name}'s attendance rate is ${attendance_rate}%. Please review and take necessary action.`,
             });
             emailCount++;
-
           } catch (emailError) {
-            console.error(`Failed to send emails for student ${student_id}:`, emailError);
+            console.error(
+              `Failed to send emails for student ${student_id}:`,
+              emailError,
+            );
             // Continue processing other students even if email fails
           }
         }
       }
     }
 
-    const emailStatus = req.body.send_emails === 'true' || req.body.send_emails === true ? 
-      ` and sent emails to ${emailCount} recipients` : ' (emails not sent)';
-    
+    const emailStatus =
+      req.body.send_emails === "true" || req.body.send_emails === true
+        ? ` and sent emails to ${emailCount} recipients`
+        : " (emails not sent)";
+
     res.json({
       success: true,
       message: `Student data uploaded successfully${emailStatus}`,
       createdCount: createdStudents.length,
       emailCount: emailCount,
-      emailsSent: req.body.send_emails === 'true' || req.body.send_emails === true
+      emailsSent:
+        req.body.send_emails === "true" || req.body.send_emails === true,
     });
   } catch (error) {
     console.error("Error in processStudentDataUpload:", error);
@@ -249,7 +278,7 @@ async function processStudentDataUpload(req, res, next) {
 async function processAttendanceUpload(req, res, next) {
   try {
     console.log("Processing attendance data upload...");
-    
+
     const rows = await parseFile(req.file.buffer, req.file.originalname);
     const updatedStudents = [];
 
@@ -258,66 +287,81 @@ async function processAttendanceUpload(req, res, next) {
         continue;
       }
 
-      const student_id = extractTextValue(row["Student ID"] || row["student_id"]);
+      const student_id = extractTextValue(
+        row["Student ID"] || row["student_id"],
+      );
       const attendance_rate = parseAttendanceRate(
-        extractTextValue(row["Attendance Rate"] || row["attendance_rate"] || row["Attendance"] || row["attendance"] || row["Attendance %"]) || 0
+        extractTextValue(row["Attendance"]) || 0,
       );
 
       if (student_id) {
         const student = await Student.findOne({ student_id });
-        console.log(`🔍 Faculty looking for student ${student_id}:`, student ? 'Found' : 'Not found');
+        console.log(
+          `🔍 Faculty looking for student ${student_id}:`,
+          student ? "Found" : "Not found",
+        );
         if (student) {
           console.log(`🔍 Student ${student_id} BEFORE faculty update:`, {
             exam_department: student.data_completion.exam_department,
             faculty: student.data_completion.faculty,
-            local_guardian: student.data_completion.local_guardian
+            local_guardian: student.data_completion.local_guardian,
           });
           student.attendance_rate = attendance_rate;
-          
+
           // Mark faculty data as complete
           student.data_completion.faculty = true;
           student.data_completion.last_updated = new Date();
-          
+
           console.log(`🔍 Faculty data completion status for ${student_id}:`, {
             exam_department: student.data_completion.exam_department,
             faculty: student.data_completion.faculty,
-            local_guardian: student.data_completion.local_guardian
+            local_guardian: student.data_completion.local_guardian,
           });
-          
+
           // Check if all data is complete
-          student.data_complete = student.data_completion.exam_department && 
-                                 student.data_completion.faculty && 
-                                 student.data_completion.local_guardian;
-          
+          student.data_complete =
+            student.data_completion.exam_department &&
+            student.data_completion.faculty &&
+            student.data_completion.local_guardian;
+
           // Only calculate risk if ALL data is complete (exam + faculty + guardian)
           if (student.data_complete) {
             try {
-              console.log(`All data complete for ${student_id}. Calculating risk assessment...`);
-              
-              const riskAssessment = await riskCalculator.calculateRisk(student);
+              console.log(
+                `All data complete for ${student_id}. Calculating risk assessment...`,
+              );
+
+              const riskAssessment =
+                await riskCalculator.calculateRisk(student);
               if (riskAssessment) {
                 student.risk_level = riskAssessment.risk_level;
                 student.risk_score = riskAssessment.risk_score;
                 student.risk_factors = riskAssessment.risk_factors;
                 student.explanation = riskAssessment.explanation;
                 student.recommendations = riskAssessment.recommendations;
-                
+
                 console.log(`Risk calculated for ${student_id}:`, {
                   risk_level: riskAssessment.risk_level,
                   risk_score: riskAssessment.risk_score,
-                  factors: riskAssessment.risk_factors
+                  factors: riskAssessment.risk_factors,
                 });
               }
             } catch (riskError) {
-              console.error(`Failed to calculate risk for student ${student_id}:`, riskError);
+              console.error(
+                `Failed to calculate risk for student ${student_id}:`,
+                riskError,
+              );
               // Continue processing even if risk calculation fails
             }
           } else {
-            console.log(`⏳ Risk calculation pending for ${student_id}. Missing data from:`, {
-              exam_department: student.data_completion.exam_department,
-              faculty: student.data_completion.faculty,
-              local_guardian: student.data_completion.local_guardian
-            });
+            console.log(
+              `⏳ Risk calculation pending for ${student_id}. Missing data from:`,
+              {
+                exam_department: student.data_completion.exam_department,
+                faculty: student.data_completion.faculty,
+                local_guardian: student.data_completion.local_guardian,
+              },
+            );
             // Ensure risk level is set to pending when data is incomplete
             student.risk_level = "pending";
             student.risk_score = 0;
@@ -325,15 +369,19 @@ async function processAttendanceUpload(req, res, next) {
             student.explanation = [];
             student.recommendations = [];
           }
-          
+
           student.last_updated = new Date();
           await student.save();
-          
+
           // Only calculate risk if data is complete
           if (student.data_complete) {
             try {
-              console.log(`🔄 Calculating risk for ${student_id} - data is complete`);
-              const riskAssessment = await riskCalculator.calculateRisk(student.toObject());
+              console.log(
+                `🔄 Calculating risk for ${student_id} - data is complete`,
+              );
+              const riskAssessment = await riskCalculator.calculateRisk(
+                student.toObject(),
+              );
               if (riskAssessment) {
                 student.risk_level = riskAssessment.risk_level;
                 student.risk_score = riskAssessment.risk_score;
@@ -341,17 +389,20 @@ async function processAttendanceUpload(req, res, next) {
                 student.explanation = riskAssessment.explanation;
                 student.recommendations = riskAssessment.recommendations;
                 student.last_updated = new Date();
-                
+
                 await student.save();
-                
+
                 console.log(`✅ Calculated risk for ${student_id}:`, {
                   risk_level: riskAssessment.risk_level,
                   risk_score: riskAssessment.risk_score,
-                  factors: riskAssessment.risk_factors
+                  factors: riskAssessment.risk_factors,
                 });
               }
             } catch (riskError) {
-              console.error(`❌ Failed to calculate risk for student ${student_id}:`, riskError);
+              console.error(
+                `❌ Failed to calculate risk for student ${student_id}:`,
+                riskError,
+              );
             }
           } else {
             // Clear risk data for incomplete students
@@ -361,17 +412,22 @@ async function processAttendanceUpload(req, res, next) {
             student.explanation = [];
             student.recommendations = [];
             await student.save();
-            
-            console.log(`⏳ Risk calculation pending for ${student_id}. Missing data from:`, {
-              exam_department: student.data_completion.exam_department,
-              faculty: student.data_completion.faculty,
-              local_guardian: student.data_completion.local_guardian
-            });
+
+            console.log(
+              `⏳ Risk calculation pending for ${student_id}. Missing data from:`,
+              {
+                exam_department: student.data_completion.exam_department,
+                faculty: student.data_completion.faculty,
+                local_guardian: student.data_completion.local_guardian,
+              },
+            );
           }
-          
+
           updatedStudents.push(student);
         } else {
-          console.log(`Student with ID ${student_id} not found. Please ensure exam department has uploaded student data first.`);
+          console.log(
+            `Student with ID ${student_id} not found. Please ensure exam department has uploaded student data first.`,
+          );
         }
       }
     }
@@ -379,7 +435,7 @@ async function processAttendanceUpload(req, res, next) {
     res.json({
       success: true,
       message: "Attendance data updated successfully",
-      updatedCount: updatedStudents.length
+      updatedCount: updatedStudents.length,
     });
   } catch (error) {
     next(error);
@@ -395,67 +451,88 @@ async function processExamDataUpload(req, res, next) {
     console.log("File info:", {
       originalname: req.file.originalname,
       mimetype: req.file.mimetype,
-      size: req.file.size
+      size: req.file.size,
     });
-    
+
     const rows = await parseFile(req.file.buffer, req.file.originalname);
     console.log("Parsed rows:", rows.length);
     console.log("First few rows:", rows.slice(0, 3));
     const updatedStudents = [];
 
     const processedStudents = new Set(); // Track processed students
-    
+
     for (const row of rows) {
       if (!row["Student ID"] && !row["student_id"]) {
         continue;
       }
 
-      const student_id = extractTextValue(row["Student ID"] || row["student_id"]);
-      const student_name = extractTextValue(row["Student Name"] || row["name"] || row["Name"]);
+      const student_id = extractTextValue(
+        row["Student ID"] || row["student_id"],
+      );
+      const student_name = extractTextValue(
+        row["Student Name"] || row["name"] || row["Name"],
+      );
       // Get exam type from form data or Excel file, default to unit_test_1
-      const examType = req.body.exam_type || extractTextValue(row["Exam Type"] || row["exam_type"]) || "unit_test_1";
-      
-      console.log(`🔄 Processing student ${student_id} (${student_name}) - Exam Type: ${examType}`);
-      
+      const examType =
+        req.body.exam_type ||
+        extractTextValue(row["Exam Type"] || row["exam_type"]) ||
+        "unit_test_1";
+
+      console.log(
+        `🔄 Processing student ${student_id} (${student_name}) - Exam Type: ${examType}`,
+      );
+
       // Check if we've already processed this student
       if (processedStudents.has(student_id)) {
-        console.log(`⚠️ WARNING: Student ${student_id} already processed! Skipping duplicate.`);
+        console.log(
+          `⚠️ WARNING: Student ${student_id} already processed! Skipping duplicate.`,
+        );
         continue;
       }
       processedStudents.add(student_id);
-      
+
       if (student_id) {
         // Process detailed grades based on exam type
         const detailedGrades = extractDetailedGrades(row, examType);
-        
+
         // Check if student exists
         const existingStudent = await Student.findOne({ student_id });
-        console.log(`🔍 Looking for student ${student_id}:`, existingStudent ? 'Found' : 'Not found');
+        console.log(
+          `🔍 Looking for student ${student_id}:`,
+          existingStudent ? "Found" : "Not found",
+        );
         if (existingStudent) {
           console.log(`🔍 Existing student data completion:`, {
             exam_department: existingStudent.data_completion.exam_department,
             faculty: existingStudent.data_completion.faculty,
-            local_guardian: existingStudent.data_completion.local_guardian
+            local_guardian: existingStudent.data_completion.local_guardian,
           });
         }
         let student;
-        
+
         if (existingStudent) {
-          console.log(`🔍 Updating existing student ${student_id} with exam data`);
-          console.log(`🔍 Current exam_department flag:`, existingStudent.data_completion.exam_department);
-          
+          console.log(
+            `🔍 Updating existing student ${student_id} with exam data`,
+          );
+          console.log(
+            `🔍 Current exam_department flag:`,
+            existingStudent.data_completion.exam_department,
+          );
+
           // Update existing student - only update specific fields to avoid conflicts
           const updateData = {
             $set: {
               name: student_name || existingStudent.name || "Unknown Student",
               email: existingStudent.email || `${student_id}@example.com`,
-              parent_email: existingStudent.parent_email || `${student_id}_parent@example.com`,
+              parent_email:
+                existingStudent.parent_email ||
+                `${student_id}_parent@example.com`,
               last_updated: new Date(),
               "data_completion.exam_department": true,
-              "data_completion.last_updated": new Date()
-            }
+              "data_completion.last_updated": new Date(),
+            },
           };
-          
+
           console.log(`🔍 Update data being sent:`, updateData);
 
           // Add exam-specific grades
@@ -472,30 +549,34 @@ async function processExamDataUpload(req, res, next) {
           // Try direct update first
           const updateResult = await Student.updateOne(
             { student_id },
-            updateData
+            updateData,
           );
-          
+
           console.log(`🔍 Update result for ${student_id}:`, updateResult);
-          
+
           // Verify the update by fetching the student again
           student = await Student.findOne({ student_id });
           console.log(`🔍 After exam data update for ${student_id}:`, {
             exam_department: student?.data_completion?.exam_department,
             faculty: student?.data_completion?.faculty,
             local_guardian: student?.data_completion?.local_guardian,
-            data_complete: student?.data_complete
+            data_complete: student?.data_complete,
           });
-          
+
           if (!student) {
-            console.log(`❌ ERROR: Student ${student_id} not found after update!`);
+            console.log(
+              `❌ ERROR: Student ${student_id} not found after update!`,
+            );
             continue;
           }
-          
+
           updatedStudents.push(student);
         } else {
           // Student doesn't exist - CREATE NEW STUDENT with exam data
-          console.log(`📝 Creating new student ${student_id} with exam data...`);
-          
+          console.log(
+            `📝 Creating new student ${student_id} with exam data...`,
+          );
+
           const newStudentData = {
             student_id,
             name: student_name || "Unknown Student",
@@ -518,10 +599,10 @@ async function processExamDataUpload(req, res, next) {
               exam_department: true, // Exam department data is provided
               faculty: false, // Will be updated by faculty
               local_guardian: false, // Will be updated by guardian
-              last_updated: new Date()
+              last_updated: new Date(),
             },
             data_complete: false,
-            last_updated: new Date()
+            last_updated: new Date(),
           };
 
           // Add exam-specific grades to new student
@@ -538,13 +619,13 @@ async function processExamDataUpload(req, res, next) {
           // Create the new student
           student = new Student(newStudentData);
           await student.save();
-          
+
           console.log(`✅ Created new student ${student_id} successfully`);
           console.log(`🔍 New student data completion status:`, {
             exam_department: student.data_completion.exam_department,
             faculty: student.data_completion.faculty,
             local_guardian: student.data_completion.local_guardian,
-            data_complete: student.data_complete
+            data_complete: student.data_complete,
           });
           updatedStudents.push(student);
         }
@@ -557,22 +638,25 @@ async function processExamDataUpload(req, res, next) {
         }
 
         // Check if all data is complete
-        student.data_complete = student.data_completion.exam_department && 
-                               student.data_completion.faculty && 
-                               student.data_completion.local_guardian;
-        
+        student.data_complete =
+          student.data_completion.exam_department &&
+          student.data_completion.faculty &&
+          student.data_completion.local_guardian;
+
         console.log(`🔍 Data completion check for ${student_id}:`, {
           exam_department: student.data_completion.exam_department,
           faculty: student.data_completion.faculty,
           local_guardian: student.data_completion.local_guardian,
-          data_complete: student.data_complete
+          data_complete: student.data_complete,
         });
-        
+
         // Only calculate risk if ALL data is complete (exam + faculty + guardian)
         if (student.data_complete) {
           try {
-            console.log(`All data complete for ${student_id}. Calculating risk assessment...`);
-            
+            console.log(
+              `All data complete for ${student_id}. Calculating risk assessment...`,
+            );
+
             const riskAssessment = await riskCalculator.calculateRisk(student);
             if (riskAssessment) {
               student.risk_level = riskAssessment.risk_level;
@@ -580,23 +664,29 @@ async function processExamDataUpload(req, res, next) {
               student.risk_factors = riskAssessment.risk_factors;
               student.explanation = riskAssessment.explanation;
               student.recommendations = riskAssessment.recommendations;
-              
+
               console.log(`Risk calculated for ${student_id}:`, {
                 risk_level: riskAssessment.risk_level,
                 risk_score: riskAssessment.risk_score,
-                factors: riskAssessment.risk_factors
+                factors: riskAssessment.risk_factors,
               });
             }
           } catch (riskError) {
-            console.error(`Failed to calculate risk for student ${student_id}:`, riskError);
+            console.error(
+              `Failed to calculate risk for student ${student_id}:`,
+              riskError,
+            );
             // Continue processing even if risk calculation fails
           }
         } else {
-          console.log(`⏳ Risk calculation pending for ${student_id}. Missing data from:`, {
-            exam_department: student.data_completion.exam_department,
-            faculty: student.data_completion.faculty,
-            local_guardian: student.data_completion.local_guardian
-          });
+          console.log(
+            `⏳ Risk calculation pending for ${student_id}. Missing data from:`,
+            {
+              exam_department: student.data_completion.exam_department,
+              faculty: student.data_completion.faculty,
+              local_guardian: student.data_completion.local_guardian,
+            },
+          );
           // Ensure risk level is set to pending when data is incomplete
           student.risk_level = "pending";
           student.risk_score = 0;
@@ -604,14 +694,18 @@ async function processExamDataUpload(req, res, next) {
           student.explanation = [];
           student.recommendations = [];
         }
-        
+
         await student.save();
-        
+
         // Only calculate risk if data is complete
         if (student.data_complete) {
           try {
-            console.log(`🔄 Calculating risk for ${student_id} - data is complete`);
-            const riskAssessment = await riskCalculator.calculateRisk(student.toObject());
+            console.log(
+              `🔄 Calculating risk for ${student_id} - data is complete`,
+            );
+            const riskAssessment = await riskCalculator.calculateRisk(
+              student.toObject(),
+            );
             if (riskAssessment) {
               student.risk_level = riskAssessment.risk_level;
               student.risk_score = riskAssessment.risk_score;
@@ -619,17 +713,20 @@ async function processExamDataUpload(req, res, next) {
               student.explanation = riskAssessment.explanation;
               student.recommendations = riskAssessment.recommendations;
               student.last_updated = new Date();
-              
+
               await student.save();
-              
+
               console.log(`✅ Calculated risk for ${student_id}:`, {
                 risk_level: riskAssessment.risk_level,
                 risk_score: riskAssessment.risk_score,
-                factors: riskAssessment.risk_factors
+                factors: riskAssessment.risk_factors,
               });
             }
           } catch (riskError) {
-            console.error(`❌ Failed to calculate risk for student ${student_id}:`, riskError);
+            console.error(
+              `❌ Failed to calculate risk for student ${student_id}:`,
+              riskError,
+            );
           }
         } else {
           // Clear risk data for incomplete students
@@ -639,23 +736,30 @@ async function processExamDataUpload(req, res, next) {
           student.explanation = [];
           student.recommendations = [];
           await student.save();
-          
-          console.log(`⏳ Risk calculation pending for ${student_id}. Missing data from:`, {
-            exam_department: student.data_completion.exam_department,
-            faculty: student.data_completion.faculty,
-            local_guardian: student.data_completion.local_guardian
-          });
+
+          console.log(
+            `⏳ Risk calculation pending for ${student_id}. Missing data from:`,
+            {
+              exam_department: student.data_completion.exam_department,
+              faculty: student.data_completion.faculty,
+              local_guardian: student.data_completion.local_guardian,
+            },
+          );
         }
-        
+
         updatedStudents.push(student);
       }
     }
 
-    console.log("Upload completed successfully. Processed students:", updatedStudents.length);
+    console.log(
+      "Upload completed successfully. Processed students:",
+      updatedStudents.length,
+    );
     res.json({
       success: true,
-      message: "Exam data processed successfully. Students created/updated with exam grades. Risk assessment will be calculated after Faculty and Guardian upload their data.",
-      updatedCount: updatedStudents.length
+      message:
+        "Exam data processed successfully. Students created/updated with exam grades. Risk assessment will be calculated after Faculty and Guardian upload their data.",
+      updatedCount: updatedStudents.length,
     });
   } catch (error) {
     console.error("Error in processExamDataUpload:", error);
@@ -669,7 +773,7 @@ async function processExamDataUpload(req, res, next) {
 async function processFeesUpload(req, res, next) {
   try {
     console.log("Processing fees data upload...");
-    
+
     const rows = await parseFile(req.file.buffer, req.file.originalname);
     const updatedStudents = [];
 
@@ -678,28 +782,42 @@ async function processFeesUpload(req, res, next) {
         continue;
       }
 
-      const student_id = extractTextValue(row["Student ID"] || row["student_id"]);
-      const fees_status = extractTextValue(row["Fees Status"] || row["fees_status"] || row["Fee Status"] || row["fee_status"]);
-      const amount_paid = parseFloat(extractTextValue(row["Amount Paid"] || row["amount_paid"]) || 0);
-      const amount_due = parseFloat(extractTextValue(row["Amount Due"] || row["amount_due"]) || 0);
+      const student_id = extractTextValue(
+        row["Student ID"] || row["student_id"],
+      );
+      const fees_status = extractTextValue(
+        row["Fees Status"] ||
+          row["fees_status"] ||
+          row["Fee Status"] ||
+          row["fee_status"],
+      );
+      const amount_paid = parseFloat(
+        extractTextValue(row["Amount Paid"] || row["amount_paid"]) || 0,
+      );
+      const amount_due = parseFloat(
+        extractTextValue(row["Amount Due"] || row["amount_due"]) || 0,
+      );
       const due_date = extractTextValue(row["Due Date"] || row["due_date"]);
 
       if (student_id) {
         const student = await Student.findOne({ student_id });
-        console.log(`🔍 Guardian looking for student ${student_id}:`, student ? 'Found' : 'Not found');
+        console.log(
+          `🔍 Guardian looking for student ${student_id}:`,
+          student ? "Found" : "Not found",
+        );
         if (student) {
           console.log(`🔍 Student ${student_id} current data completion:`, {
             exam_department: student.data_completion.exam_department,
             faculty: student.data_completion.faculty,
             local_guardian: student.data_completion.local_guardian,
-            data_complete: student.data_complete
+            data_complete: student.data_complete,
           });
           // Update fees-related fields
           student.fees_status = fees_status || "Pending";
           student.amount_paid = amount_paid;
           student.amount_due = amount_due;
           student.due_date = due_date;
-          
+
           // Calculate days overdue based on due date
           if (due_date) {
             const dueDate = new Date(due_date);
@@ -708,40 +826,51 @@ async function processFeesUpload(req, res, next) {
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             student.days_overdue = Math.max(0, diffDays);
           }
-          
+
           // Mark local guardian data as complete
           student.data_completion.local_guardian = true;
           student.data_completion.last_updated = new Date();
-          
+
           console.log(`🔍 Guardian data completion status for ${student_id}:`, {
             exam_department: student.data_completion.exam_department,
             faculty: student.data_completion.faculty,
-            local_guardian: student.data_completion.local_guardian
-          });
-          
-          // Check if all data is complete
-          student.data_complete = student.data_completion.exam_department && 
-                                 student.data_completion.faculty && 
-                                 student.data_completion.local_guardian;
-          
-          console.log(`🔍 Data completion check for ${student_id} (fees upload):`, {
-            exam_department: student.data_completion.exam_department,
-            faculty: student.data_completion.faculty,
             local_guardian: student.data_completion.local_guardian,
-            data_complete: student.data_complete
           });
-          
-          // Now calculate risk since all data is complete
-          if (student.data_complete) {
-            console.log(`✅ All data complete for ${student_id}. Calculating risk assessment...`);
-            await calculateAndUpdateRisk(student);
-            console.log(`Risk calculation completed for ${student_id}. All data is now available.`);
-          } else {
-            console.log(`⏳ Risk calculation pending for ${student_id}. Missing data from:`, {
+
+          // Check if all data is complete
+          student.data_complete =
+            student.data_completion.exam_department &&
+            student.data_completion.faculty &&
+            student.data_completion.local_guardian;
+
+          console.log(
+            `🔍 Data completion check for ${student_id} (fees upload):`,
+            {
               exam_department: student.data_completion.exam_department,
               faculty: student.data_completion.faculty,
-              local_guardian: student.data_completion.local_guardian
-            });
+              local_guardian: student.data_completion.local_guardian,
+              data_complete: student.data_complete,
+            },
+          );
+
+          // Now calculate risk since all data is complete
+          if (student.data_complete) {
+            console.log(
+              `✅ All data complete for ${student_id}. Calculating risk assessment...`,
+            );
+            await calculateAndUpdateRisk(student);
+            console.log(
+              `Risk calculation completed for ${student_id}. All data is now available.`,
+            );
+          } else {
+            console.log(
+              `⏳ Risk calculation pending for ${student_id}. Missing data from:`,
+              {
+                exam_department: student.data_completion.exam_department,
+                faculty: student.data_completion.faculty,
+                local_guardian: student.data_completion.local_guardian,
+              },
+            );
             // Ensure risk level is set to pending when data is incomplete
             student.risk_level = "pending";
             student.risk_score = 0;
@@ -749,15 +878,19 @@ async function processFeesUpload(req, res, next) {
             student.explanation = [];
             student.recommendations = [];
           }
-          
+
           student.last_updated = new Date();
           await student.save();
-          
+
           // Only calculate risk if data is complete
           if (student.data_complete) {
             try {
-              console.log(`🔄 Calculating risk for ${student_id} - data is complete`);
-              const riskAssessment = await riskCalculator.calculateRisk(student.toObject());
+              console.log(
+                `🔄 Calculating risk for ${student_id} - data is complete`,
+              );
+              const riskAssessment = await riskCalculator.calculateRisk(
+                student.toObject(),
+              );
               if (riskAssessment) {
                 student.risk_level = riskAssessment.risk_level;
                 student.risk_score = riskAssessment.risk_score;
@@ -765,17 +898,20 @@ async function processFeesUpload(req, res, next) {
                 student.explanation = riskAssessment.explanation;
                 student.recommendations = riskAssessment.recommendations;
                 student.last_updated = new Date();
-                
+
                 await student.save();
-                
+
                 console.log(`✅ Calculated risk for ${student_id}:`, {
                   risk_level: riskAssessment.risk_level,
                   risk_score: riskAssessment.risk_score,
-                  factors: riskAssessment.risk_factors
+                  factors: riskAssessment.risk_factors,
                 });
               }
             } catch (riskError) {
-              console.error(`❌ Failed to calculate risk for student ${student_id}:`, riskError);
+              console.error(
+                `❌ Failed to calculate risk for student ${student_id}:`,
+                riskError,
+              );
             }
           } else {
             // Clear risk data for incomplete students
@@ -785,17 +921,22 @@ async function processFeesUpload(req, res, next) {
             student.explanation = [];
             student.recommendations = [];
             await student.save();
-            
-            console.log(`⏳ Risk calculation pending for ${student_id}. Missing data from:`, {
-              exam_department: student.data_completion.exam_department,
-              faculty: student.data_completion.faculty,
-              local_guardian: student.data_completion.local_guardian
-            });
+
+            console.log(
+              `⏳ Risk calculation pending for ${student_id}. Missing data from:`,
+              {
+                exam_department: student.data_completion.exam_department,
+                faculty: student.data_completion.faculty,
+                local_guardian: student.data_completion.local_guardian,
+              },
+            );
           }
-          
+
           updatedStudents.push(student);
         } else {
-          console.log(`Student with ID ${student_id} not found. Please ensure exam department has uploaded student data first.`);
+          console.log(
+            `Student with ID ${student_id} not found. Please ensure exam department has uploaded student data first.`,
+          );
         }
       }
     }
@@ -803,7 +944,7 @@ async function processFeesUpload(req, res, next) {
     res.json({
       success: true,
       message: "Fees data updated successfully",
-      updatedCount: updatedStudents.length
+      updatedCount: updatedStudents.length,
     });
   } catch (error) {
     next(error);
@@ -816,24 +957,29 @@ async function processFeesUpload(req, res, next) {
 async function calculateAndUpdateRisk(student) {
   try {
     const data = student.toObject();
-    
+
     // Rule-based risk calculation
     const baseRisk = await riskCalculator.calculateRisk(data);
-    
+
     // Get current config for pass criteria
     let config = await Config.findOne();
     if (!config) {
       config = new Config();
       await config.save();
     }
-    
+
     // Prepare ML features
     const mlFeatures = {
       attendance_rate: data.attendance_rate || 0,
-      avg_grade: data.grades && data.grades.length
-        ? data.grades.reduce((sum, g) => sum + g.score, 0) / data.grades.length
+      avg_grade:
+        data.grades && data.grades.length
+          ? data.grades.reduce((sum, g) => sum + g.score, 0) /
+            data.grades.length
+          : 0,
+      failing_count: data.grades
+        ? data.grades.filter((g) => g.score < (config.passCriteria || 60))
+            .length
         : 0,
-      failing_count: data.grades ? data.grades.filter((g) => g.score < (config.passCriteria || 60)).length : 0,
       days_overdue: data.days_overdue || 0,
       attempts: 0,
     };
@@ -843,8 +989,14 @@ async function calculateAndUpdateRisk(student) {
     try {
       mlResult = await predictRisk(mlFeatures);
     } catch (error) {
-      console.error(`ML prediction failed for ${data.student_id}:`, error.message);
-      mlResult = { risk_level: baseRisk.risk_level, risk_score: baseRisk.score };
+      console.error(
+        `ML prediction failed for ${data.student_id}:`,
+        error.message,
+      );
+      mlResult = {
+        risk_level: baseRisk.risk_level,
+        risk_score: baseRisk.score,
+      };
     }
 
     // Combine ML and rule-based results
@@ -862,8 +1014,10 @@ async function calculateAndUpdateRisk(student) {
     student.risk_factors = finalRisk.risk_factors;
     student.explanation = finalRisk.explanation;
     student.recommendations = finalRisk.recommendations;
-    
-    console.log(`Updated risk for ${data.student_id}: ${finalRisk.risk_level} (${finalRisk.risk_score})`);
+
+    console.log(
+      `Updated risk for ${data.student_id}: ${finalRisk.risk_level} (${finalRisk.risk_score})`,
+    );
   } catch (error) {
     console.error(`Error calculating risk for ${student.student_id}:`, error);
   }
@@ -877,7 +1031,7 @@ function calculateBasicGrades(student) {
     ...(student.unit_test_1_grades || []),
     ...(student.unit_test_2_grades || []),
     ...(student.mid_sem_grades || []),
-    ...(student.end_sem_grades || [])
+    ...(student.end_sem_grades || []),
   ];
 
   // If no grades available, return empty array
@@ -887,7 +1041,7 @@ function calculateBasicGrades(student) {
 
   // Group by subject and calculate average
   const subjectGrades = {};
-  allGrades.forEach(grade => {
+  allGrades.forEach((grade) => {
     if (grade && grade.subject && !isNaN(grade.score) && grade.score !== null) {
       if (!subjectGrades[grade.subject]) {
         subjectGrades[grade.subject] = [];
@@ -897,23 +1051,26 @@ function calculateBasicGrades(student) {
   });
 
   // Calculate average for each subject
-  const grades = Object.entries(subjectGrades).map(([subject, scores]) => {
-    if (scores.length === 0) return null;
-    
-    const avgScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
-    const roundedScore = Math.round(avgScore);
-    
-    // Ensure score is a valid number
-    if (isNaN(roundedScore) || roundedScore < 0 || roundedScore > 100) {
-      return null;
-    }
-    
-    return {
-      subject,
-      score: roundedScore,
-      status: roundedScore >= 60 ? "passing" : "failing"
-    };
-  }).filter(grade => grade !== null);
+  const grades = Object.entries(subjectGrades)
+    .map(([subject, scores]) => {
+      if (scores.length === 0) return null;
+
+      const avgScore =
+        scores.reduce((sum, score) => sum + score, 0) / scores.length;
+      const roundedScore = Math.round(avgScore);
+
+      // Ensure score is a valid number
+      if (isNaN(roundedScore) || roundedScore < 0 || roundedScore > 100) {
+        return null;
+      }
+
+      return {
+        subject,
+        score: roundedScore,
+        status: roundedScore >= 60 ? "passing" : "failing",
+      };
+    })
+    .filter((grade) => grade !== null);
 
   return grades;
 }
@@ -924,7 +1081,7 @@ function calculateBasicGrades(student) {
 async function processFullDataUpload(req, res, next) {
   try {
     console.log("Processing full data upload...");
-    
+
     // Clear existing data before uploading new data
     console.log("Clearing existing student data...");
     await Student.deleteMany({});
@@ -933,41 +1090,95 @@ async function processFullDataUpload(req, res, next) {
     console.log("About to call parseFile with:", req.file.originalname);
     const rows = await parseFile(req.file.buffer, req.file.originalname);
     console.log("Parsed rows:", rows);
-    
+
     // Get current configuration for pass criteria
     let config = await Config.findOne();
     if (!config) {
       config = new Config();
       await config.save();
     }
-    
+
     const students = [];
 
     for (const row of rows) {
       // Skip rows that don't have essential data
-      if (!row["Student ID"] && !row["student_id"] && !row["Student Name"] && !row["name"]) {
+      if (
+        !row["Student ID"] &&
+        !row["student_id"] &&
+        !row["Student Name"] &&
+        !row["name"]
+      ) {
         console.log("Skipping row with missing essential data:", row);
         continue;
       }
-      
+
       console.log("Processing row:", row);
 
       // Map row fields to student model keys with flexible column names
-      const student_id = extractTextValue(row["Student ID"] || row["student_id"] || row["ID"] || row["id"]) || `ST${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-      const name = extractTextValue(row["Student Name"] || row["name"] || row["Name"] || row["Student"]) || "Unknown Student";
-      const email = extractTextValue(row["Email"] || row["email"] || row["Student Email"] || row["student_email"]) || `${student_id}@example.com`;
-      const parent_email = extractTextValue(row["Parent Email"] || row["parent_email"] || row["Parent"] || row["parent"]) || `${student_id}_parent@example.com`;
+      const student_id =
+        extractTextValue(
+          row["Student ID"] || row["student_id"] || row["ID"] || row["id"],
+        ) || `ST${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+      const name =
+        extractTextValue(
+          row["Student Name"] || row["name"] || row["Name"] || row["Student"],
+        ) || "Unknown Student";
+      const email =
+        extractTextValue(
+          row["Email"] ||
+            row["email"] ||
+            row["Student Email"] ||
+            row["student_email"],
+        ) || `${student_id}@example.com`;
+      const parent_email =
+        extractTextValue(
+          row["Parent Email"] ||
+            row["parent_email"] ||
+            row["Parent"] ||
+            row["parent"],
+        ) || `${student_id}_parent@example.com`;
       const attendance_rate = parseAttendanceRate(
-        extractTextValue(row["Attendance Rate"] || row["attendance_rate"] || row["Attendance"] || row["attendance"] || row["Attendance %"]) || 0
+        extractTextValue(
+          row["Attendance Rate"] ||
+            row["attendance_rate"] ||
+            row["Attendance"] ||
+            row["attendance"] ||
+            row["Attendance %"],
+        ) || 0,
       );
-      const fee_status = normalizeFeeStatus(extractTextValue(row["Fee Status"] || row["fee_status"] || row["Fees"] || row["fees"]) || "current");
-      const days_overdue = parseInt(extractTextValue(row["Days Overdue"] || row["days_overdue"] || row["Overdue"] || row["overdue"]) || 0);
+      const fee_status = normalizeFeeStatus(
+        extractTextValue(
+          row["Fee Status"] || row["fee_status"] || row["Fees"] || row["fees"],
+        ) || "current",
+      );
+      const days_overdue = parseInt(
+        extractTextValue(
+          row["Days Overdue"] ||
+            row["days_overdue"] ||
+            row["Overdue"] ||
+            row["overdue"],
+        ) || 0,
+      );
       const grades = extractGrades(row, config.passCriteria);
-      const class_year = extractTextValue(row["Class Year"] || row["class_year"] || row["Year"] || row["year"] || row["Grade"] || row["grade"]);
-      const major = extractTextValue(row["Major"] || row["major"] || row["Subject"] || row["subject"] || row["Course"] || row["course"]);
-      
+      const class_year = extractTextValue(
+        row["Class Year"] ||
+          row["class_year"] ||
+          row["Year"] ||
+          row["year"] ||
+          row["Grade"] ||
+          row["grade"],
+      );
+      const major = extractTextValue(
+        row["Major"] ||
+          row["major"] ||
+          row["Subject"] ||
+          row["subject"] ||
+          row["Course"] ||
+          row["course"],
+      );
+
       console.log("Extracted grades:", grades);
-      
+
       const data = {
         student_id,
         name,
@@ -1001,14 +1212,23 @@ async function processFullDataUpload(req, res, next) {
       // ML risk prediction
       let mlResult = { risk_level: "low", risk_score: 0 };
       try {
-        console.log(`Calling ML service for ${data.student_id} with features:`, mlFeatures);
+        console.log(
+          `Calling ML service for ${data.student_id} with features:`,
+          mlFeatures,
+        );
         mlResult = await predictRisk(mlFeatures);
         console.log(`ML prediction for ${data.student_id}:`, mlResult);
       } catch (error) {
-        console.error(`ML prediction failed for ${data.student_id}:`, error.message);
+        console.error(
+          `ML prediction failed for ${data.student_id}:`,
+          error.message,
+        );
         console.error(`ML prediction error details:`, error);
         // Use rule-based as fallback
-        mlResult = { risk_level: baseRisk.risk_level, risk_score: baseRisk.score };
+        mlResult = {
+          risk_level: baseRisk.risk_level,
+          risk_score: baseRisk.score,
+        };
       }
 
       // Combine ML and rule-based results intelligently
@@ -1026,10 +1246,12 @@ async function processFullDataUpload(req, res, next) {
       const saved = await Student.findOneAndUpdate(
         { student_id: data.student_id },
         { ...data, ...finalRisk, last_updated: new Date() },
-        { upsert: true, new: true }
+        { upsert: true, new: true },
       );
 
-      console.log(`Saved student ${data.student_id} with risk_level: ${saved.risk_level}, risk_score: ${saved.risk_score}`);
+      console.log(
+        `Saved student ${data.student_id} with risk_level: ${saved.risk_level}, risk_score: ${saved.risk_score}`,
+      );
       students.push(saved);
     }
 
@@ -1050,25 +1272,42 @@ async function processFullDataUpload(req, res, next) {
 // Helper function to extract detailed grades for exam data
 function extractDetailedGrades(row, examType) {
   const grades = [];
-  const excludedKeys = ['Student ID', 'Student Name', 'Email', 'Parent Email', 'student id', 'student_id', 'student name', 'name', 'email', 'parent email', 'parent'];
-  
+  const excludedKeys = [
+    "Student ID",
+    "Student Name",
+    "Email",
+    "Parent Email",
+    "student id",
+    "student_id",
+    "student name",
+    "name",
+    "email",
+    "parent email",
+    "parent",
+  ];
+
   // Iterate through all keys in the row
   for (const [key, value] of Object.entries(row)) {
     // Skip excluded keys
-    if (excludedKeys.some(excluded => key.toLowerCase().includes(excluded.toLowerCase()))) {
+    if (
+      excludedKeys.some((excluded) =>
+        key.toLowerCase().includes(excluded.toLowerCase()),
+      )
+    ) {
       continue;
     }
-    
+
     // Try to parse as a number
     const score = parseFloat(value);
     if (!isNaN(score) && score >= 0 && score <= 100) {
       const grade = {
         subject: key,
         semester: row["Semester"] || "1",
-        academic_year: row["Academic Year"] || new Date().getFullYear().toString(),
-        last_updated: new Date()
+        academic_year:
+          row["Academic Year"] || new Date().getFullYear().toString(),
+        last_updated: new Date(),
       };
-      
+
       // Set the appropriate exam type field based on examType
       if (examType === "unit_test_1") {
         grade.unit_test_1 = score;
@@ -1079,11 +1318,11 @@ function extractDetailedGrades(row, examType) {
       } else if (examType === "end_sem") {
         grade.end_sem = score;
       }
-      
+
       grades.push(grade);
     }
   }
-  
+
   return grades;
 }
 
@@ -1091,25 +1330,41 @@ function extractDetailedGrades(row, examType) {
 function extractGrades(row, passCriteria = 60) {
   // Exclude non-grade columns to find all subject columns dynamically
   const excludedColumns = [
-    'student id', 'student name', 'name', 'email', 'parent email', 'parent',
-    'attendance rate', 'attendance', 'fee status', 'fees', 'days overdue', 'overdue',
-    'class year', 'year', 'grade', 'major', 'subject', 'course', 'id'
+    "student id",
+    "student name",
+    "name",
+    "email",
+    "parent email",
+    "parent",
+    "attendance rate",
+    "attendance",
+    "fee status",
+    "fees",
+    "days overdue",
+    "overdue",
+    "class year",
+    "year",
+    "grade",
+    "major",
+    "subject",
+    "course",
+    "id",
   ];
-  
+
   // Find all columns that look like subjects (contain numbers and are not excluded)
-  const gradeColumns = Object.keys(row).filter(key => {
+  const gradeColumns = Object.keys(row).filter((key) => {
     const lowerKey = key.toLowerCase().trim();
-    
+
     // Skip excluded columns
-    if (excludedColumns.some(excluded => lowerKey.includes(excluded))) {
+    if (excludedColumns.some((excluded) => lowerKey.includes(excluded))) {
       return false;
     }
-    
+
     // Skip empty or very short keys
     if (lowerKey.length < 2) {
       return false;
     }
-    
+
     // Check if the value is a number (indicating it's a grade)
     const value = parseFloat(row[key] || 0);
     return !isNaN(value) && value >= 0 && value <= 100;
@@ -1119,7 +1374,11 @@ function extractGrades(row, passCriteria = 60) {
     .map((subject) => {
       const score = parseFloat(row[subject] || 0);
       return score > 0
-        ? { subject: subject, score, status: score >= passCriteria ? "passing" : "failing" }
+        ? {
+            subject: subject,
+            score,
+            status: score >= passCriteria ? "passing" : "failing",
+          }
         : null;
     })
     .filter(Boolean);
@@ -1127,21 +1386,20 @@ function extractGrades(row, passCriteria = 60) {
   return grades;
 }
 
-
 // Helper function to extract text value from Excel cells (handles hyperlinks)
 function extractTextValue(value) {
   if (!value) return null;
-  
+
   // If it's already a string, return it
-  if (typeof value === 'string') return value.trim();
-  
+  if (typeof value === "string") return value.trim();
+
   // If it's an object (like hyperlink), extract the text property
-  if (typeof value === 'object' && value !== null) {
+  if (typeof value === "object" && value !== null) {
     if (value.text) return value.text.trim();
     if (value.value) return value.value.toString().trim();
     if (value.hyperlink) return value.hyperlink.trim();
   }
-  
+
   // Convert to string as fallback
   return value.toString().trim();
 }
@@ -1149,25 +1407,25 @@ function extractTextValue(value) {
 // Helper function to parse attendance rate (handles both percentage and decimal formats)
 function parseAttendanceRate(value) {
   if (!value) return 0;
-  
+
   const str = value.toString().trim();
-  
+
   // If it contains % symbol, it's a percentage
-  if (str.includes('%')) {
-    return parseFloat(str.replace('%', ''));
+  if (str.includes("%")) {
+    return parseFloat(str.replace("%", ""));
   }
-  
+
   // If it's a decimal between 0 and 1, convert to percentage
   const num = parseFloat(str);
   if (num >= 0 && num <= 1) {
     return num * 100;
   }
-  
+
   // If it's already a percentage (0-100), return as is
   if (num >= 0 && num <= 100) {
     return num;
   }
-  
+
   // Default fallback
   return 0;
 }
@@ -1175,26 +1433,26 @@ function parseAttendanceRate(value) {
 // Helper function to normalize fee status values
 function normalizeFeeStatus(status) {
   if (!status) return "current";
-  
+
   const normalized = status.toString().toLowerCase().trim();
-  
+
   // Map various fee status values to the accepted enum values
   const statusMap = {
-    "completed": "current",
-    "complete": "current", 
-    "paid": "current",
-    "done": "current",
-    "finished": "current",
-    "pending": "pending",
-    "waiting": "pending",
-    "due": "pending",
-    "incomplete": "overdue",
-    "overdue": "overdue",
-    "late": "overdue",
-    "unpaid": "overdue",
-    "default": "overdue"
+    completed: "current",
+    complete: "current",
+    paid: "current",
+    done: "current",
+    finished: "current",
+    pending: "pending",
+    waiting: "pending",
+    due: "pending",
+    incomplete: "overdue",
+    overdue: "overdue",
+    late: "overdue",
+    unpaid: "overdue",
+    default: "overdue",
   };
-  
+
   return statusMap[normalized] || "current";
 }
 
@@ -1204,29 +1462,33 @@ function normalizeFeeStatus(status) {
 async function cleanupDuplicateStudents() {
   try {
     console.log("Starting duplicate student cleanup...");
-    
+
     // Find all students
     const allStudents = await Student.find({});
     const studentMap = new Map();
     const duplicates = [];
-    
+
     // Group students by student_id
-    allStudents.forEach(student => {
+    allStudents.forEach((student) => {
       if (studentMap.has(student.student_id)) {
         duplicates.push(student);
       } else {
         studentMap.set(student.student_id, student);
       }
     });
-    
+
     if (duplicates.length > 0) {
-      console.log(`Found ${duplicates.length} duplicate students. Removing duplicates...`);
-      
+      console.log(
+        `Found ${duplicates.length} duplicate students. Removing duplicates...`,
+      );
+
       // Delete duplicate students (keep the ones in studentMap)
-      const duplicateIds = duplicates.map(student => student._id);
+      const duplicateIds = duplicates.map((student) => student._id);
       const result = await Student.deleteMany({ _id: { $in: duplicateIds } });
-      
-      console.log(`Cleaned up ${result.deletedCount} duplicate student records.`);
+
+      console.log(
+        `Cleaned up ${result.deletedCount} duplicate student records.`,
+      );
       return result.deletedCount;
     } else {
       console.log("No duplicate students found.");
@@ -1238,12 +1500,12 @@ async function cleanupDuplicateStudents() {
   }
 }
 
-module.exports = { 
+module.exports = {
   uploadController,
   processStudentDataUpload,
   processAttendanceUpload,
   processExamDataUpload,
   processFeesUpload,
   processFullDataUpload,
-  cleanupDuplicateStudents
+  cleanupDuplicateStudents,
 };
