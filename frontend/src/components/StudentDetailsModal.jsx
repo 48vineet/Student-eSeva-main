@@ -1,24 +1,49 @@
-import React, { useEffect } from 'react';
-import { X, User, Mail, Phone, Calendar, AlertTriangle, TrendingUp, BookOpen, DollarSign, Clock, CheckCircle, XCircle } from 'lucide-react';
+import {
+  AlertTriangle,
+  BookOpen,
+  CheckCircle,
+  Clock,
+  DollarSign,
+  Mail,
+  TrendingUp,
+  User,
+  X,
+  XCircle,
+} from "lucide-react";
+import { useEffect } from "react";
+import { useConfig } from "../context/ConfigContext";
 
-const StudentDetailsModal = ({ student, isOpen, onClose, showActions = true }) => {
+const StudentDetailsModal = ({
+  student,
+  isOpen,
+  onClose,
+  showActions = true,
+}) => {
+  const { config } = useConfig();
+  const passCriteria = Number(config?.passCriteria ?? 60);
+  const studentClassYear =
+    student?.class_year ||
+    student?.current_academic_year ||
+    config?.academicYear ||
+    "N/A";
+
   // Handle ESC key to close modal
   useEffect(() => {
     const handleEscKey = (event) => {
-      if (event.key === 'Escape') {
+      if (event.key === "Escape") {
         onClose();
       }
     };
 
     if (isOpen) {
-      document.addEventListener('keydown', handleEscKey);
+      document.addEventListener("keydown", handleEscKey);
       // Prevent body scroll when modal is open
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = "hidden";
     }
 
     return () => {
-      document.removeEventListener('keydown', handleEscKey);
-      document.body.style.overflow = 'unset';
+      document.removeEventListener("keydown", handleEscKey);
+      document.body.style.overflow = "unset";
     };
   }, [isOpen, onClose]);
 
@@ -28,71 +53,94 @@ const StudentDetailsModal = ({ student, isOpen, onClose, showActions = true }) =
 
   const getRiskColor = (level) => {
     switch (level) {
-      case 'high': return 'text-red-600 bg-red-50 border-red-200';
-      case 'medium': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-      case 'low': return 'text-green-600 bg-green-50 border-green-200';
-      default: return 'text-gray-600 bg-gray-50 border-gray-200';
+      case "high":
+        return "text-red-600 bg-red-50 border-red-200";
+      case "medium":
+        return "text-yellow-600 bg-yellow-50 border-yellow-200";
+      case "low":
+        return "text-green-600 bg-green-50 border-green-200";
+      default:
+        return "text-gray-600 bg-gray-50 border-gray-200";
     }
   };
 
   const getRiskIcon = (level) => {
     switch (level) {
-      case 'high': return <AlertTriangle className="w-5 h-5 text-red-600" />;
-      case 'medium': return <AlertTriangle className="w-5 h-5 text-yellow-600" />;
-      case 'low': return <CheckCircle className="w-5 h-5 text-green-600" />;
-      default: return <AlertTriangle className="w-5 h-5 text-gray-600" />;
+      case "high":
+        return <AlertTriangle className="w-5 h-5 text-red-600" />;
+      case "medium":
+        return <AlertTriangle className="w-5 h-5 text-yellow-600" />;
+      case "low":
+        return <CheckCircle className="w-5 h-5 text-green-600" />;
+      default:
+        return <AlertTriangle className="w-5 h-5 text-gray-600" />;
     }
   };
 
   const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    if (!dateString) return "N/A";
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
-  const readableFactors = student.risk_factors?.map(factor => {
-    const factorMap = {
-      'critical_attendance': 'Critical Attendance Issue',
-      'low_attendance': 'Low Attendance',
-      'multiple_failures': 'Multiple Subject Failures',
-      'single_failure': 'Single Subject Failure',
-      'financial_stress': 'Financial Stress',
-      'pending_fees': 'Pending Fee Payment',
-      // 'exhausted_attempts' removed from system
-    };
-    return factorMap[factor] || factor.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-  }) || [];
+  const readableFactors =
+    student.risk_factors?.map((factor) => {
+      const factorMap = {
+        critical_attendance: "Critical Attendance Issue",
+        low_attendance: "Low Attendance",
+        multiple_failures: "Multiple Subject Failures",
+        single_failure: "Single Subject Failure",
+        financial_stress: "Financial Stress",
+        pending_fees: "Pending Fee Payment",
+        incomplete_data: "Incomplete Data",
+        // 'exhausted_attempts' removed from system
+      };
+      return (
+        factorMap[factor] ||
+        factor.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
+      );
+    }) || [];
+
+  const calculationLog = Array.isArray(student.risk_calculation_log)
+    ? student.risk_calculation_log
+    : [];
 
   // Helper function to get all grades from detailed fields
   const getAllGradesFromDetailedFields = (student) => {
     const allGrades = [];
     const gradeFields = [
-      'unit_test_1_grades', 'unit_test_2_grades', 'mid_sem_grades', 'end_sem_grades'
+      "unit_test_1_grades",
+      "unit_test_2_grades",
+      "mid_sem_grades",
+      "end_sem_grades",
     ];
-    gradeFields.forEach(field => {
+    gradeFields.forEach((field) => {
       if (student[field] && Array.isArray(student[field])) {
-        student[field].forEach(grade => {
+        student[field].forEach((grade) => {
           if (grade.subject) {
-            const examType = field.replace('_grades', '');
+            const examType = field.replace("_grades", "");
             let score = 0;
             let hasScore = false;
-            
+
             // Extract score based on exam type
-            if (examType === 'unit_test_1' && grade.unit_test_1 !== undefined) {
+            if (examType === "unit_test_1" && grade.unit_test_1 !== undefined) {
               score = grade.unit_test_1;
               hasScore = true;
-            } else if (examType === 'unit_test_2' && grade.unit_test_2 !== undefined) {
+            } else if (
+              examType === "unit_test_2" &&
+              grade.unit_test_2 !== undefined
+            ) {
               score = grade.unit_test_2;
               hasScore = true;
-            } else if (examType === 'mid_sem' && grade.mid_sem !== undefined) {
+            } else if (examType === "mid_sem" && grade.mid_sem !== undefined) {
               score = grade.mid_sem;
               hasScore = true;
-            } else if (examType === 'end_sem' && grade.end_sem !== undefined) {
+            } else if (examType === "end_sem" && grade.end_sem !== undefined) {
               score = grade.end_sem;
               hasScore = true;
             } else if (grade.score !== undefined) {
@@ -100,28 +148,32 @@ const StudentDetailsModal = ({ student, isOpen, onClose, showActions = true }) =
               score = grade.score;
               hasScore = true;
             }
-            
-            allGrades.push({ 
-              subject: grade.subject, 
-              score: score, 
+
+            allGrades.push({
+              subject: grade.subject,
+              score: score,
               examType: examType,
-              status: score < 36 ? 'failing' : 'passing',
-              hasScore: hasScore
+              status: score < passCriteria ? "failing" : "passing",
+              hasScore: hasScore,
             });
           }
         });
       }
     });
     // Fallback to old grades array if detailed fields are empty
-    if (allGrades.length === 0 && student.grades && Array.isArray(student.grades)) {
-      student.grades.forEach(grade => {
+    if (
+      allGrades.length === 0 &&
+      student.grades &&
+      Array.isArray(student.grades)
+    ) {
+      student.grades.forEach((grade) => {
         if (grade.subject) {
-          allGrades.push({ 
-            subject: grade.subject, 
-            score: grade.score || 0, 
-            examType: 'basic',
-            status: (grade.score || 0) < 36 ? 'failing' : 'passing',
-            hasScore: grade.score !== undefined && grade.score !== null
+          allGrades.push({
+            subject: grade.subject,
+            score: grade.score || 0,
+            examType: "basic",
+            status: (grade.score || 0) < passCriteria ? "failing" : "passing",
+            hasScore: grade.score !== undefined && grade.score !== null,
           });
         }
       });
@@ -131,14 +183,20 @@ const StudentDetailsModal = ({ student, isOpen, onClose, showActions = true }) =
 
   // Get all grades from detailed fields
   const allGrades = getAllGradesFromDetailedFields(student);
-  
+
   // Calculate failed subjects from all grades
-  const failedSubjects = allGrades.filter(grade => grade.status === 'failing').length;
-  
+  const failedSubjects = allGrades.filter(
+    (grade) => grade.status === "failing",
+  ).length;
+
   // Calculate GPA from all grades
-  const gpa = allGrades.length > 0 
-    ? (allGrades.reduce((sum, grade) => sum + grade.score, 0) / allGrades.length).toFixed(2)
-    : 'N/A';
+  const gpa =
+    allGrades.length > 0
+      ? (
+          allGrades.reduce((sum, grade) => sum + grade.score, 0) /
+          allGrades.length
+        ).toFixed(2)
+      : "N/A";
 
   // Group grades by exam type
   const gradesByExamType = allGrades.reduce((acc, grade) => {
@@ -150,15 +208,21 @@ const StudentDetailsModal = ({ student, isOpen, onClose, showActions = true }) =
   }, {});
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50" style={{zIndex: 9999}}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50"
+      style={{ zIndex: 9999 }}
+    >
       {/* Background Blur Overlay */}
-      <div 
+      <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
-      
+
       {/* Modal Content */}
-      <div className="relative w-full max-w-4xl max-h-[80vh] bg-white rounded-2xl shadow-2xl overflow-hidden animate-modal-in transform transition-all duration-300 ease-out" style={{zIndex: 10000}}>
+      <div
+        className="relative w-full max-w-4xl max-h-[80vh] bg-white rounded-2xl shadow-2xl overflow-hidden animate-modal-in transform transition-all duration-300 ease-out"
+        style={{ zIndex: 10000 }}
+      >
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-3 sm:p-4">
           <div className="flex items-center justify-between">
@@ -167,8 +231,12 @@ const StudentDetailsModal = ({ student, isOpen, onClose, showActions = true }) =
                 <User className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
               <div className="min-w-0 flex-1">
-                <h2 className="text-lg sm:text-2xl font-bold truncate">{student.name}</h2>
-                <p className="text-blue-100 text-sm sm:text-base truncate">Student ID: {student.student_id}</p>
+                <h2 className="text-lg sm:text-2xl font-bold truncate">
+                  {student.name}
+                </h2>
+                <p className="text-blue-100 text-sm sm:text-base truncate">
+                  Student ID: {student.student_id}
+                </p>
               </div>
             </div>
             <button
@@ -184,12 +252,12 @@ const StudentDetailsModal = ({ student, isOpen, onClose, showActions = true }) =
         {/* Content */}
         <div className="p-3 sm:p-4 overflow-y-auto max-h-[calc(80vh-100px)]">
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
-            
             {/* Left Column */}
             <div className="space-y-3 sm:space-y-4">
-              
               {/* Risk Status */}
-              <div className={`p-4 rounded-xl border-2 ${getRiskColor(student.risk_level)}`}>
+              <div
+                className={`p-4 rounded-xl border-2 ${getRiskColor(student.risk_level)}`}
+              >
                 <div className="flex items-center space-x-3 mb-3">
                   {getRiskIcon(student.risk_level)}
                   <h3 className="text-lg font-semibold">Risk Assessment</h3>
@@ -197,17 +265,24 @@ const StudentDetailsModal = ({ student, isOpen, onClose, showActions = true }) =
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="font-medium">Risk Level:</span>
-                    <span className="font-bold text-lg uppercase">{student.risk_level}</span>
+                    <span className="font-bold text-lg uppercase">
+                      {student.risk_level}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="font-medium">Risk Score:</span>
-                    <span className="font-bold text-lg">{student.risk_score}/100</span>
+                    <span className="font-bold text-lg">
+                      {student.risk_score}/100
+                    </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                    <div 
+                    <div
                       className={`h-2 rounded-full transition-all duration-500 ${
-                        student.risk_level === 'high' ? 'bg-red-500' : 
-                        student.risk_level === 'medium' ? 'bg-yellow-500' : 'bg-green-500'
+                        student.risk_level === "high"
+                          ? "bg-red-500"
+                          : student.risk_level === "medium"
+                            ? "bg-yellow-500"
+                            : "bg-green-500"
                       }`}
                       style={{ width: `${student.risk_score}%` }}
                     />
@@ -226,14 +301,16 @@ const StudentDetailsModal = ({ student, isOpen, onClose, showActions = true }) =
                     <Mail className="w-4 h-4 text-gray-500" />
                     <div>
                       <p className="text-sm text-gray-600">Student Email</p>
-                      <p className="font-medium">{student.email || 'N/A'}</p>
+                      <p className="font-medium">{student.email || "N/A"}</p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-3">
                     <Mail className="w-4 h-4 text-gray-500" />
                     <div>
                       <p className="text-sm text-gray-600">Parent Email</p>
-                      <p className="font-medium">{student.parent_email || 'N/A'}</p>
+                      <p className="font-medium">
+                        {student.parent_email || "N/A"}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -247,7 +324,9 @@ const StudentDetailsModal = ({ student, isOpen, onClose, showActions = true }) =
                 </h3>
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-blue-600">{student.attendance_rate || 0}%</p>
+                    <p className="text-2xl font-bold text-blue-600">
+                      {student.attendance_rate || 0}%
+                    </p>
                     <p className="text-sm text-gray-600">Attendance</p>
                   </div>
                   <div className="text-center">
@@ -255,58 +334,77 @@ const StudentDetailsModal = ({ student, isOpen, onClose, showActions = true }) =
                     <p className="text-sm text-gray-600">GPA</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-red-600">{failedSubjects}</p>
+                    <p className="text-2xl font-bold text-red-600">
+                      {failedSubjects}
+                    </p>
                     <p className="text-sm text-gray-600">Failed Subjects</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-green-600">{student.class_year || 'N/A'}</p>
+                    <p className="text-2xl font-bold text-green-600">
+                      {studentClassYear}
+                    </p>
                     <p className="text-sm text-gray-600">Class Year</p>
                   </div>
                 </div>
-                
+
                 {/* Detailed Exam Grades */}
                 {allGrades.length > 0 && (
                   <div className="mt-4">
-                    <h4 className="text-sm font-semibold text-blue-700 mb-3">Detailed Exam Results:</h4>
+                    <h4 className="text-sm font-semibold text-blue-700 mb-3">
+                      Detailed Exam Results:
+                    </h4>
                     <div className="space-y-4">
-                      {Object.entries(gradesByExamType).map(([examType, grades]) => (
-                        <div key={examType} className="bg-white p-3 rounded-lg border">
-                          <h5 className="text-xs font-semibold text-blue-600 mb-2 uppercase tracking-wide">
-                            {examType.replace(/_/g, ' ')} ({grades.length} subjects)
-                          </h5>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {grades.map((grade, index) => (
-                              <div 
-                                key={index}
-                                className={`flex justify-between items-center p-2 rounded-lg text-sm ${
-                                  grade.status === 'failing' 
-                                    ? 'bg-red-100 text-red-800 border border-red-200' 
-                                    : 'bg-green-100 text-green-800 border border-green-200'
-                                }`}
-                              >
-                                <span className="font-medium truncate">{grade.subject}</span>
-                                <div className="flex items-center space-x-2">
-                                  <span className="font-bold">
-                                    {grade.hasScore ? grade.score : 'No Score'}
+                      {Object.entries(gradesByExamType).map(
+                        ([examType, grades]) => (
+                          <div
+                            key={examType}
+                            className="bg-white p-3 rounded-lg border"
+                          >
+                            <h5 className="text-xs font-semibold text-blue-600 mb-2 uppercase tracking-wide">
+                              {examType.replace(/_/g, " ")} ({grades.length}{" "}
+                              subjects)
+                            </h5>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {grades.map((grade, index) => (
+                                <div
+                                  key={index}
+                                  className={`flex justify-between items-center p-2 rounded-lg text-sm ${
+                                    grade.status === "failing"
+                                      ? "bg-red-100 text-red-800 border border-red-200"
+                                      : "bg-green-100 text-green-800 border border-green-200"
+                                  }`}
+                                >
+                                  <span className="font-medium truncate">
+                                    {grade.subject}
                                   </span>
-                                  <span className={`text-xs px-2 py-1 rounded-full ${
-                                    grade.hasScore 
-                                      ? (grade.status === 'failing' 
-                                          ? 'bg-red-200 text-red-700' 
-                                          : 'bg-green-200 text-green-700')
-                                      : 'bg-yellow-200 text-yellow-700'
-                                  }`}>
-                                    {grade.hasScore 
-                                      ? (grade.status === 'failing' ? 'FAIL' : 'PASS')
-                                      : 'PENDING'
-                                    }
-                                  </span>
+                                  <div className="flex items-center space-x-2">
+                                    <span className="font-bold">
+                                      {grade.hasScore
+                                        ? grade.score
+                                        : "No Score"}
+                                    </span>
+                                    <span
+                                      className={`text-xs px-2 py-1 rounded-full ${
+                                        grade.hasScore
+                                          ? grade.status === "failing"
+                                            ? "bg-red-200 text-red-700"
+                                            : "bg-green-200 text-green-700"
+                                          : "bg-yellow-200 text-yellow-700"
+                                      }`}
+                                    >
+                                      {grade.hasScore
+                                        ? grade.status === "failing"
+                                          ? "FAIL"
+                                          : "PASS"
+                                        : "PENDING"}
+                                    </span>
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ),
+                      )}
                     </div>
                   </div>
                 )}
@@ -321,34 +419,46 @@ const StudentDetailsModal = ({ student, isOpen, onClose, showActions = true }) =
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="font-medium">Fee Status:</span>
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      student.fees_status === 'Complete' || student.fee_status === 'current' 
-                        ? 'bg-green-100 text-green-800' 
-                        : student.fees_status === 'Overdue' || student.fee_status === 'overdue'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {student.fees_status || student.fee_status || 'Unknown'}
+                    <span
+                      className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        student.fees_status === "Complete" ||
+                        student.fee_status === "current"
+                          ? "bg-green-100 text-green-800"
+                          : student.fees_status === "Overdue" ||
+                              student.fee_status === "overdue"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-yellow-100 text-yellow-800"
+                      }`}
+                    >
+                      {student.fees_status || student.fee_status || "Unknown"}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="font-medium">Days Overdue:</span>
-                    <span className={`font-bold ${(student.days_overdue || 0) > 0 ? 'text-red-600' : 'text-gray-700'}`}>
+                    <span
+                      className={`font-bold ${(student.days_overdue || 0) > 0 ? "text-red-600" : "text-gray-700"}`}
+                    >
                       {student.days_overdue || 0} days
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="font-medium">Fees Due Days:</span>
-                    <span className="font-bold text-gray-700">{student.fees_due_days || 0} days</span>
+                    <span className="font-bold text-gray-700">
+                      {student.fees_due_days || 0} days
+                    </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="font-medium">Data Complete:</span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      student.data_completion?.local_guardian 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {student.data_completion?.local_guardian ? 'Complete' : 'Pending'}
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        student.data_completion?.local_guardian
+                          ? "bg-green-100 text-green-800"
+                          : "bg-yellow-100 text-yellow-800"
+                      }`}
+                    >
+                      {student.data_completion?.local_guardian
+                        ? "Complete"
+                        : "Pending"}
                     </span>
                   </div>
                 </div>
@@ -357,7 +467,6 @@ const StudentDetailsModal = ({ student, isOpen, onClose, showActions = true }) =
 
             {/* Right Column */}
             <div className="space-y-3 sm:space-y-4">
-              
               {/* Risk Factors */}
               <div className="bg-red-50 p-4 rounded-xl">
                 <h3 className="text-lg font-semibold text-red-800 mb-4 flex items-center">
@@ -374,7 +483,9 @@ const StudentDetailsModal = ({ student, isOpen, onClose, showActions = true }) =
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-gray-500 italic">No specific risk factors identified</p>
+                  <p className="text-gray-500 italic">
+                    No specific risk factors identified
+                  </p>
                 )}
               </div>
 
@@ -402,14 +513,19 @@ const StudentDetailsModal = ({ student, isOpen, onClose, showActions = true }) =
                   <TrendingUp className="w-5 h-5 mr-2" />
                   Recommendations
                 </h3>
-                {student.recommendations && student.recommendations.length > 0 ? (
+                {student.recommendations &&
+                student.recommendations.length > 0 ? (
                   <ul className="space-y-3">
                     {student.recommendations.map((rec, index) => (
                       <li key={index} className="flex items-start space-x-3">
                         <CheckCircle className="w-4 h-4 text-purple-500 flex-shrink-0 mt-0.5" />
                         <div>
-                          <p className="font-medium text-gray-800">{rec.action}</p>
-                          <p className="text-sm text-gray-600 capitalize">Priority: {rec.urgency}</p>
+                          <p className="font-medium text-gray-800">
+                            {rec.action}
+                          </p>
+                          <p className="text-sm text-gray-600 capitalize">
+                            Priority: {rec.urgency}
+                          </p>
                         </div>
                       </li>
                     ))}
@@ -418,19 +534,54 @@ const StudentDetailsModal = ({ student, isOpen, onClose, showActions = true }) =
                   <div className="space-y-2">
                     <p className="flex items-center space-x-2">
                       <CheckCircle className="w-4 h-4 text-purple-500" />
-                      <span className="text-gray-700">Schedule immediate meeting with student</span>
+                      <span className="text-gray-700">
+                        Schedule immediate meeting with student
+                      </span>
                     </p>
                     <p className="flex items-center space-x-2">
                       <CheckCircle className="w-4 h-4 text-purple-500" />
-                      <span className="text-gray-700">Review academic progress</span>
+                      <span className="text-gray-700">
+                        Review academic progress
+                      </span>
                     </p>
                     <p className="flex items-center space-x-2">
                       <CheckCircle className="w-4 h-4 text-purple-500" />
-                      <span className="text-gray-700">Provide additional support</span>
+                      <span className="text-gray-700">
+                        Provide additional support
+                      </span>
                     </p>
                   </div>
                 )}
               </div>
+
+              {/* Risk Calculation Log */}
+              {calculationLog.length > 0 && (
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <h3 className="text-lg font-semibold text-slate-800 mb-3 flex items-center">
+                    <Clock className="w-5 h-5 mr-2" />
+                    Risk Calculation Log
+                  </h3>
+                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                    {calculationLog.map((entry, index) => (
+                      <div
+                        key={index}
+                        className="text-sm bg-white border border-slate-200 rounded-lg p-2"
+                      >
+                        <div className="flex justify-between gap-3">
+                          <span className="font-semibold text-slate-700">
+                            {entry.step || "step"}
+                          </span>
+                          <span className="text-slate-600">
+                            +{entry.points || 0} (total:{" "}
+                            {entry.running_total || 0})
+                          </span>
+                        </div>
+                        <p className="text-slate-600 mt-1">{entry.details}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Data Completion Status */}
               <div className="bg-indigo-50 p-4 rounded-xl">
@@ -441,42 +592,56 @@ const StudentDetailsModal = ({ student, isOpen, onClose, showActions = true }) =
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="font-medium">Exam Department:</span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      student.data_completion?.exam_department 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {student.data_completion?.exam_department ? 'Complete' : 'Pending'}
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        student.data_completion?.exam_department
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {student.data_completion?.exam_department
+                        ? "Complete"
+                        : "Pending"}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="font-medium">Faculty (Attendance):</span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      student.data_completion?.faculty 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {student.data_completion?.faculty ? 'Complete' : 'Pending'}
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        student.data_completion?.faculty
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {student.data_completion?.faculty
+                        ? "Complete"
+                        : "Pending"}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="font-medium">Local Guardian (Fees):</span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      student.data_completion?.local_guardian 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {student.data_completion?.local_guardian ? 'Complete' : 'Pending'}
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        student.data_completion?.local_guardian
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {student.data_completion?.local_guardian
+                        ? "Complete"
+                        : "Pending"}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="font-medium">Overall Status:</span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      student.data_complete 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {student.data_complete ? 'Complete' : 'Incomplete'}
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        student.data_complete
+                          ? "bg-green-100 text-green-800"
+                          : "bg-yellow-100 text-yellow-800"
+                      }`}
+                    >
+                      {student.data_complete ? "Complete" : "Incomplete"}
                     </span>
                   </div>
                 </div>
@@ -491,23 +656,28 @@ const StudentDetailsModal = ({ student, isOpen, onClose, showActions = true }) =
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="font-medium">Major:</span>
-                    <span className="text-gray-700">{student.major || 'Not specified'}</span>
+                    <span className="text-gray-700">
+                      {student.major || "Not specified"}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="font-medium">Class Year:</span>
-                    <span className="text-gray-700">{student.class_year || 'Not specified'}</span>
+                    <span className="text-gray-700">{studentClassYear}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="font-medium">Last Updated:</span>
-                    <span className="text-gray-700">{formatDate(student.last_updated)}</span>
+                    <span className="text-gray-700">
+                      {formatDate(student.last_updated)}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="font-medium">Created:</span>
-                    <span className="text-gray-700">{formatDate(student.createdAt)}</span>
+                    <span className="text-gray-700">
+                      {formatDate(student.createdAt)}
+                    </span>
                   </div>
                 </div>
               </div>
-
             </div>
           </div>
         </div>

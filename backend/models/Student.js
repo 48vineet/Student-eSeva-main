@@ -42,27 +42,34 @@ const RecommendationSchema = new mongoose.Schema({
 
 // Action tracking schema for parent/guardian approval workflow
 const ActionSchema = new mongoose.Schema({
-  type: { 
-    type: String, 
-    enum: ["meeting", "counseling", "academic_support", "attendance", "fees", "general"], 
-    default: "general" 
+  type: {
+    type: String,
+    enum: [
+      "meeting",
+      "counseling",
+      "academic_support",
+      "attendance",
+      "fees",
+      "general",
+    ],
+    default: "general",
   },
   description: { type: String, required: true },
   counselor_notes: { type: String, required: true },
-  status: { 
-    type: String, 
-    enum: ["pending", "approved", "rejected"], 
-    default: "pending" 
+  status: {
+    type: String,
+    enum: ["pending", "approved", "rejected"],
+    default: "pending",
   },
   rejection_reason: { type: String, default: "" },
   created_by: { type: String, required: true }, // counselor user_id
   approved_by: { type: String, default: "" }, // parent/guardian user_id
   last_updated: { type: Date, default: Date.now },
   due_date: { type: Date },
-  priority: { 
-    type: String, 
-    enum: ["low", "medium", "high", "urgent"], 
-    default: "medium" 
+  priority: {
+    type: String,
+    enum: ["low", "medium", "high", "urgent"],
+    default: "medium",
   },
 });
 
@@ -79,7 +86,10 @@ const StudentSchema = new mongoose.Schema(
     // Enhanced academic tracking
     academic_history: [AcademicHistorySchema],
     current_semester: { type: String, default: "1" },
-    current_academic_year: { type: String, default: new Date().getFullYear().toString() },
+    current_academic_year: {
+      type: String,
+      default: new Date().getFullYear().toString(),
+    },
     // Grade progression tracking for current semester
     unit_test_1_grades: [DetailedGradeSchema],
     unit_test_2_grades: [DetailedGradeSchema],
@@ -111,6 +121,20 @@ const StudentSchema = new mongoose.Schema(
     explanation: [String],
     recommendations: [RecommendationSchema],
     failed_subjects: { type: Number, default: 0 },
+    risk_calculation_log: [
+      {
+        step: String,
+        points: Number,
+        running_total: Number,
+        details: String,
+      },
+    ],
+    risk_missing_data_reasons: [String],
+    risk_ai_meta: {
+      provider: String,
+      model: String,
+      status: String,
+    },
     // Action tracking for parent/guardian approval workflow
     actions: [ActionSchema],
     // Data completion tracking
@@ -118,7 +142,7 @@ const StudentSchema = new mongoose.Schema(
       exam_department: { type: Boolean, default: false },
       faculty: { type: Boolean, default: false },
       local_guardian: { type: Boolean, default: false },
-      last_updated: { type: Date, default: Date.now }
+      last_updated: { type: Date, default: Date.now },
     },
     // Overall data completion status
     data_complete: { type: Boolean, default: false },
@@ -126,7 +150,7 @@ const StudentSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 module.exports = mongoose.model("Student", StudentSchema);

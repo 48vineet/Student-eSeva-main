@@ -1,59 +1,64 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { useStudents } from '../../context/StudentContext';
-import { api } from '../../api/api';
-import StudentDetailsModal from '../StudentDetailsModal';
-import ActionHistory from '../ActionHistory';
-import StudentProgressReport from '../StudentProgressReport';
-import Navbar from '../Navbar';
 import {
-  BookOpen,
-  DollarSign,
-  UserCheck,
   AlertTriangle,
+  ArrowRight,
+  BookOpen,
+  Calendar,
   CheckCircle,
   Clock,
+  DollarSign,
+  FileText,
+  Sparkles,
+  Star,
   Target,
   TrendingUp,
-  Award,
-  Calendar,
-  FileText,
-  Eye,
-  ArrowRight,
-  Star,
-  Zap
-} from 'lucide-react';
+  UserCheck,
+  Zap,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { api } from "../../api/api";
+import { useAuth } from "../../context/AuthContext";
+import { useStudents } from "../../context/StudentContext";
+import ActionHistory from "../ActionHistory";
+import Navbar from "../Navbar";
+import StudentProgressReport from "../StudentProgressReport";
 
 const StudentDashboard = () => {
   const { user } = useAuth();
   const { state, actions } = useStudents();
   const { students, loading, error } = state;
   const { fetchStudents } = actions;
-  const [selectedStudent, setSelectedStudent] = useState(null);
-  const [showModal, setShowModal] = useState(false);
   const [showActions, setShowActions] = useState(false);
   const [showProgressReport, setShowProgressReport] = useState(false);
   const [studentData, setStudentData] = useState(null);
   const [studentLoading, setStudentLoading] = useState(false);
   const [studentError, setStudentError] = useState(null);
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryError, setSummaryError] = useState(null);
+  const [aiSummary, setAiSummary] = useState("");
 
   // Fetch student's own data when component mounts
   useEffect(() => {
     const fetchStudentData = async () => {
-      if (user && user.role === 'student' && user.student_id) {
+      if (user && user.role === "student" && user.student_id) {
         try {
           setStudentLoading(true);
           setStudentError(null);
-          
+
           // Use the specific student endpoint
           const response = await api.getStudentById(user.student_id);
           setStudentData(response.data.student);
-          
-          console.log('StudentDashboard - fetched student data:', response.data.student);
+
+          console.log(
+            "StudentDashboard - fetched student data:",
+            response.data.student,
+          );
         } catch (error) {
-          console.error('StudentDashboard - error fetching student data:', error);
-          setStudentError(error.message || 'Failed to fetch student data');
+          console.error(
+            "StudentDashboard - error fetching student data:",
+            error,
+          );
+          setStudentError(error.message || "Failed to fetch student data");
         } finally {
           setStudentLoading(false);
         }
@@ -65,22 +70,30 @@ const StudentDashboard = () => {
 
   // Debug: Log data
   useEffect(() => {
-    console.log('StudentDashboard - studentData:', studentData);
-    console.log('StudentDashboard - studentLoading:', studentLoading);
-    console.log('StudentDashboard - studentError:', studentError);
-    console.log('StudentDashboard - user:', user);
+    console.log("StudentDashboard - studentData:", studentData);
+    console.log("StudentDashboard - studentLoading:", studentLoading);
+    console.log("StudentDashboard - studentError:", studentError);
+    console.log("StudentDashboard - user:", user);
   }, [studentData, studentLoading, studentError, user]);
 
-  const handleViewDetails = () => {
-    if (studentData) {
-      setSelectedStudent(studentData);
-      setShowModal(true);
-    }
-  };
+  const handleGenerateSummary = async () => {
+    if (!studentData?.student_id) return;
 
-  const handleCloseModal = () => {
-    setShowModal(false);
-    setSelectedStudent(null);
+    try {
+      setSummaryLoading(true);
+      setSummaryError(null);
+      setShowSummaryModal(true);
+
+      const response = await api.getStudentAiSummary(studentData.student_id);
+      const summaryText = response?.data?.summary || "No summary generated.";
+      setAiSummary(summaryText);
+    } catch (error) {
+      console.error("StudentDashboard - error generating AI summary:", error);
+      setSummaryError(error.message || "Failed to generate AI summary");
+      setAiSummary("");
+    } finally {
+      setSummaryLoading(false);
+    }
   };
 
   const handleShowActions = () => {
@@ -104,8 +117,12 @@ const StudentDashboard = () => {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Loading Your Data</h2>
-          <p className="text-gray-600">Please wait while we fetch your academic information...</p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            Loading Your Data
+          </h2>
+          <p className="text-gray-600">
+            Please wait while we fetch your academic information...
+          </p>
         </div>
       </div>
     );
@@ -117,8 +134,8 @@ const StudentDashboard = () => {
         <div className="text-red-600 text-center">
           <h2 className="text-2xl font-bold mb-4">Error Loading Data</h2>
           <p>{studentError}</p>
-          <button 
-            onClick={() => window.location.reload()} 
+          <button
+            onClick={() => window.location.reload()}
             className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
           >
             Retry
@@ -132,9 +149,15 @@ const StudentDashboard = () => {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Student Data Not Found</h2>
-          <p className="text-gray-600 mb-4">Your student record could not be found.</p>
-          <p className="text-sm text-gray-500">Please contact your institution administrator.</p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            Student Data Not Found
+          </h2>
+          <p className="text-gray-600 mb-4">
+            Your student record could not be found.
+          </p>
+          <p className="text-sm text-gray-500">
+            Please contact your institution administrator.
+          </p>
         </div>
       </div>
     );
@@ -142,10 +165,14 @@ const StudentDashboard = () => {
 
   const getRiskColor = (riskLevel) => {
     switch (riskLevel) {
-      case 'high': return 'text-red-600 bg-red-100';
-      case 'medium': return 'text-yellow-600 bg-yellow-100';
-      case 'low': return 'text-green-600 bg-green-100';
-      default: return 'text-gray-600 bg-gray-100';
+      case "high":
+        return "text-red-600 bg-red-100";
+      case "medium":
+        return "text-yellow-600 bg-yellow-100";
+      case "low":
+        return "text-green-600 bg-green-100";
+      default:
+        return "text-gray-600 bg-gray-100";
     }
   };
 
@@ -183,7 +210,9 @@ const StudentDashboard = () => {
                     </div>
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-red-600">Risk Level</p>
+                    <p className="text-sm font-medium text-red-600">
+                      Risk Level
+                    </p>
                     <p className="text-2xl font-bold text-red-700 group-hover:scale-105 transition-transform duration-200 capitalize">
                       {studentData.risk_level}
                     </p>
@@ -204,7 +233,9 @@ const StudentDashboard = () => {
                     </div>
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-blue-600">Attendance</p>
+                    <p className="text-sm font-medium text-blue-600">
+                      Attendance
+                    </p>
                     <p className="text-2xl font-bold text-blue-700 group-hover:scale-105 transition-transform duration-200">
                       {studentData.attendance_rate}%
                     </p>
@@ -225,7 +256,9 @@ const StudentDashboard = () => {
                     </div>
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-purple-600">Risk Score</p>
+                    <p className="text-sm font-medium text-purple-600">
+                      Risk Score
+                    </p>
                     <p className="text-2xl font-bold text-purple-700 group-hover:scale-105 transition-transform duration-200">
                       {studentData.risk_score}/100
                     </p>
@@ -246,9 +279,11 @@ const StudentDashboard = () => {
                     </div>
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-green-600">Fees Status</p>
+                    <p className="text-sm font-medium text-green-600">
+                      Fees Status
+                    </p>
                     <p className="text-lg font-bold text-green-700 group-hover:scale-105 transition-transform duration-200">
-                      {studentData.fees_status || 'Current'}
+                      {studentData.fees_status || "Current"}
                     </p>
                     <p className="text-xs text-green-500">Payment Status</p>
                   </div>
@@ -265,14 +300,20 @@ const StudentDashboard = () => {
                 Your Complete Academic Profile
               </h2>
             </div>
-            
+
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Category
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Details
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -284,15 +325,25 @@ const StudentDashboard = () => {
                           <UserCheck className="w-5 h-5 text-blue-600" />
                         </div>
                         <div>
-                          <div className="text-sm font-medium text-gray-900">Personal Info</div>
-                          <div className="text-sm text-gray-500">Student ID: {studentData.student_id}</div>
+                          <div className="text-sm font-medium text-gray-900">
+                            Personal Info
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            Student ID: {studentData.student_id}
+                          </div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{studentData.name}</div>
-                      <div className="text-sm text-gray-500">{studentData.email}</div>
-                      <div className="text-sm text-gray-500">{studentData.major} - {studentData.class_year}</div>
+                      <div className="text-sm text-gray-900">
+                        {studentData.name}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {studentData.email}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {studentData.major} - {studentData.class_year}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -310,8 +361,12 @@ const StudentDashboard = () => {
                           <BookOpen className="w-5 h-5 text-green-600" />
                         </div>
                         <div>
-                          <div className="text-sm font-medium text-gray-900">Academic Performance</div>
-                          <div className="text-sm text-gray-500">Subject-wise Grades</div>
+                          <div className="text-sm font-medium text-gray-900">
+                            Academic Performance
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            Subject-wise Grades
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -319,27 +374,44 @@ const StudentDashboard = () => {
                       <div className="space-y-1">
                         {studentData.grades && studentData.grades.length > 0 ? (
                           studentData.grades.map((grade, index) => (
-                            <div key={index} className="flex justify-between items-center">
-                              <span className="text-sm text-gray-900">{grade.subject}</span>
-                              <span className={`text-sm font-medium px-2 py-1 rounded ${
-                                grade.status === 'passing' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                              }`}>
+                            <div
+                              key={index}
+                              className="flex justify-between items-center"
+                            >
+                              <span className="text-sm text-gray-900">
+                                {grade.subject}
+                              </span>
+                              <span
+                                className={`text-sm font-medium px-2 py-1 rounded ${
+                                  grade.status === "passing"
+                                    ? "bg-green-100 text-green-800"
+                                    : "bg-red-100 text-red-800"
+                                }`}
+                              >
                                 {grade.score}% ({grade.status})
                               </span>
                             </div>
                           ))
                         ) : (
-                          <span className="text-sm text-gray-500">No grades available</span>
+                          <span className="text-sm text-gray-500">
+                            No grades available
+                          </span>
                         )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        studentData.grades && studentData.grades.some(g => g.status === 'failing') 
-                          ? 'bg-red-100 text-red-800' 
-                          : 'bg-green-100 text-green-800'
-                      }`}>
-                        {studentData.grades && studentData.grades.some(g => g.status === 'failing') ? 'Needs Attention' : 'Good'}
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          studentData.grades &&
+                          studentData.grades.some((g) => g.status === "failing")
+                            ? "bg-red-100 text-red-800"
+                            : "bg-green-100 text-green-800"
+                        }`}
+                      >
+                        {studentData.grades &&
+                        studentData.grades.some((g) => g.status === "failing")
+                          ? "Needs Attention"
+                          : "Good"}
                       </span>
                     </td>
                   </tr>
@@ -352,8 +424,12 @@ const StudentDashboard = () => {
                           <Calendar className="w-5 h-5 text-blue-600" />
                         </div>
                         <div>
-                          <div className="text-sm font-medium text-gray-900">Attendance</div>
-                          <div className="text-sm text-gray-500">Current Semester</div>
+                          <div className="text-sm font-medium text-gray-900">
+                            Attendance
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            Current Semester
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -361,25 +437,40 @@ const StudentDashboard = () => {
                       <div className="text-sm text-gray-900">
                         <div className="flex items-center">
                           <div className="w-full bg-gray-200 rounded-full h-2 mr-3">
-                            <div 
+                            <div
                               className={`h-2 rounded-full ${
-                                studentData.attendance_rate >= 85 ? 'bg-green-500' :
-                                studentData.attendance_rate >= 75 ? 'bg-yellow-500' : 'bg-red-500'
+                                studentData.attendance_rate >= 85
+                                  ? "bg-green-500"
+                                  : studentData.attendance_rate >= 75
+                                    ? "bg-yellow-500"
+                                    : "bg-red-500"
                               }`}
-                              style={{ width: `${studentData.attendance_rate}%` }}
+                              style={{
+                                width: `${studentData.attendance_rate}%`,
+                              }}
                             ></div>
                           </div>
-                          <span className="text-sm font-medium">{studentData.attendance_rate}%</span>
+                          <span className="text-sm font-medium">
+                            {studentData.attendance_rate}%
+                          </span>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        studentData.attendance_rate >= 85 ? 'bg-green-100 text-green-800' :
-                        studentData.attendance_rate >= 75 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                        {studentData.attendance_rate >= 85 ? 'Excellent' :
-                         studentData.attendance_rate >= 75 ? 'Good' : 'Needs Improvement'}
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          studentData.attendance_rate >= 85
+                            ? "bg-green-100 text-green-800"
+                            : studentData.attendance_rate >= 75
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {studentData.attendance_rate >= 85
+                          ? "Excellent"
+                          : studentData.attendance_rate >= 75
+                            ? "Good"
+                            : "Needs Improvement"}
                       </span>
                     </td>
                   </tr>
@@ -392,16 +483,23 @@ const StudentDashboard = () => {
                           <DollarSign className="w-5 h-5 text-green-600" />
                         </div>
                         <div>
-                          <div className="text-sm font-medium text-gray-900">Fees Status</div>
-                          <div className="text-sm text-gray-500">Financial Information</div>
+                          <div className="text-sm font-medium text-gray-900">
+                            Fees Status
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            Financial Information
+                          </div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
-                        <div>Status: {studentData.fees_status || 'Current'}</div>
+                        <div>
+                          Status: {studentData.fees_status || "Current"}
+                        </div>
                         <div className="text-sm text-gray-500">
-                          Paid: ₹{studentData.amount_paid?.toLocaleString() || 0} | 
+                          Paid: ₹
+                          {studentData.amount_paid?.toLocaleString() || 0} |
                           Due: ₹{studentData.amount_due?.toLocaleString() || 0}
                         </div>
                         {studentData.days_overdue > 0 && (
@@ -412,12 +510,18 @@ const StudentDashboard = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        studentData.fees_status === 'Complete' || studentData.amount_due === 0 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {studentData.fees_status === 'Complete' || studentData.amount_due === 0 ? 'Paid' : 'Pending'}
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          studentData.fees_status === "Complete" ||
+                          studentData.amount_due === 0
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {studentData.fees_status === "Complete" ||
+                        studentData.amount_due === 0
+                          ? "Paid"
+                          : "Pending"}
                       </span>
                     </td>
                   </tr>
@@ -430,35 +534,57 @@ const StudentDashboard = () => {
                           <Target className="w-5 h-5 text-purple-600" />
                         </div>
                         <div>
-                          <div className="text-sm font-medium text-gray-900">Risk Assessment</div>
-                          <div className="text-sm text-gray-500">AI-Powered Analysis</div>
+                          <div className="text-sm font-medium text-gray-900">
+                            Risk Assessment
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            AI-Powered Analysis
+                          </div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
                         <div className="flex items-center">
-                          <div className={`w-3 h-3 rounded-full mr-2 ${
-                            studentData.risk_level === 'high' ? 'bg-red-500' :
-                            studentData.risk_level === 'medium' ? 'bg-yellow-500' : 'bg-green-500'
-                          }`}></div>
-                          <span className="capitalize font-medium">{studentData.risk_level} Risk</span>
-                          <span className="ml-2 text-gray-500">({studentData.risk_score}/100)</span>
+                          <div
+                            className={`w-3 h-3 rounded-full mr-2 ${
+                              studentData.risk_level === "high"
+                                ? "bg-red-500"
+                                : studentData.risk_level === "medium"
+                                  ? "bg-yellow-500"
+                                  : "bg-green-500"
+                            }`}
+                          ></div>
+                          <span className="capitalize font-medium">
+                            {studentData.risk_level} Risk
+                          </span>
+                          <span className="ml-2 text-gray-500">
+                            ({studentData.risk_score}/100)
+                          </span>
                         </div>
-                        {studentData.risk_factors && studentData.risk_factors.length > 0 && (
-                          <div className="text-sm text-gray-500 mt-1">
-                            Factors: {studentData.risk_factors.join(', ')}
-                          </div>
-                        )}
+                        {studentData.risk_factors &&
+                          studentData.risk_factors.length > 0 && (
+                            <div className="text-sm text-gray-500 mt-1">
+                              Factors: {studentData.risk_factors.join(", ")}
+                            </div>
+                          )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        studentData.risk_level === 'high' ? 'bg-red-100 text-red-800' :
-                        studentData.risk_level === 'medium' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
-                      }`}>
-                        {studentData.risk_level === 'high' ? 'High Priority' :
-                         studentData.risk_level === 'medium' ? 'Monitor' : 'Low Risk'}
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          studentData.risk_level === "high"
+                            ? "bg-red-100 text-red-800"
+                            : studentData.risk_level === "medium"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-green-100 text-green-800"
+                        }`}
+                      >
+                        {studentData.risk_level === "high"
+                          ? "High Priority"
+                          : studentData.risk_level === "medium"
+                            ? "Monitor"
+                            : "Low Risk"}
                       </span>
                     </td>
                   </tr>
@@ -468,69 +594,98 @@ const StudentDashboard = () => {
           </div>
 
           {/* Action Recommendations */}
-          {studentData.recommendations && studentData.recommendations.length > 0 && (
-            <div className="bg-white shadow-lg rounded-xl overflow-hidden mb-8">
-              <div className="px-6 py-4 bg-gradient-to-r from-orange-600 to-red-600">
-                <h2 className="text-xl font-bold text-white flex items-center">
-                  <Zap className="w-6 h-6 mr-3" />
-                  Recommended Actions to Overcome Challenges
-                </h2>
-              </div>
-              <div className="p-6">
-                <div className="space-y-4">
-                  {studentData.recommendations.map((rec, index) => (
-                    <div key={index} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow duration-200">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center mb-2">
-                            <div className={`p-2 rounded-lg mr-3 ${
-                              rec.urgency === 'immediate' ? 'bg-red-100' :
-                              rec.urgency === 'high' ? 'bg-orange-100' :
-                              rec.urgency === 'medium' ? 'bg-yellow-100' : 'bg-green-100'
-                            }`}>
-                              <Target className={`w-5 h-5 ${
-                                rec.urgency === 'immediate' ? 'text-red-600' :
-                                rec.urgency === 'high' ? 'text-orange-600' :
-                                rec.urgency === 'medium' ? 'text-yellow-600' : 'text-green-600'
-                              }`} />
-                            </div>
-                            <h3 className="text-lg font-semibold text-gray-900">{rec.action}</h3>
-                            <span className={`ml-3 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              rec.urgency === 'immediate' ? 'bg-red-100 text-red-800' :
-                              rec.urgency === 'high' ? 'bg-orange-100 text-orange-800' :
-                              rec.urgency === 'medium' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
-                            }`}>
-                              {rec.urgency} priority
-                            </span>
-                          </div>
-                          <p className="text-gray-600 mb-3">{rec.description}</p>
-                          <div className="flex items-center text-sm text-gray-500">
-                            <Clock className="w-4 h-4 mr-1" />
-                            <span>Created: {new Date(rec.date).toLocaleDateString()}</span>
-                            {rec.completed && (
-                              <span className="ml-4 text-green-600 font-medium flex items-center">
-                                <CheckCircle className="w-4 h-4 mr-1" />
-                                Completed
+          {studentData.recommendations &&
+            studentData.recommendations.length > 0 && (
+              <div className="bg-white shadow-lg rounded-xl overflow-hidden mb-8">
+                <div className="px-6 py-4 bg-gradient-to-r from-orange-600 to-red-600">
+                  <h2 className="text-xl font-bold text-white flex items-center">
+                    <Zap className="w-6 h-6 mr-3" />
+                    Recommended Actions to Overcome Challenges
+                  </h2>
+                </div>
+                <div className="p-6">
+                  <div className="space-y-4">
+                    {studentData.recommendations.map((rec, index) => (
+                      <div
+                        key={index}
+                        className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow duration-200"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center mb-2">
+                              <div
+                                className={`p-2 rounded-lg mr-3 ${
+                                  rec.urgency === "immediate"
+                                    ? "bg-red-100"
+                                    : rec.urgency === "high"
+                                      ? "bg-orange-100"
+                                      : rec.urgency === "medium"
+                                        ? "bg-yellow-100"
+                                        : "bg-green-100"
+                                }`}
+                              >
+                                <Target
+                                  className={`w-5 h-5 ${
+                                    rec.urgency === "immediate"
+                                      ? "text-red-600"
+                                      : rec.urgency === "high"
+                                        ? "text-orange-600"
+                                        : rec.urgency === "medium"
+                                          ? "text-yellow-600"
+                                          : "text-green-600"
+                                  }`}
+                                />
+                              </div>
+                              <h3 className="text-lg font-semibold text-gray-900">
+                                {rec.action}
+                              </h3>
+                              <span
+                                className={`ml-3 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                  rec.urgency === "immediate"
+                                    ? "bg-red-100 text-red-800"
+                                    : rec.urgency === "high"
+                                      ? "bg-orange-100 text-orange-800"
+                                      : rec.urgency === "medium"
+                                        ? "bg-yellow-100 text-yellow-800"
+                                        : "bg-green-100 text-green-800"
+                                }`}
+                              >
+                                {rec.urgency} priority
                               </span>
-                            )}
+                            </div>
+                            <p className="text-gray-600 mb-3">
+                              {rec.description}
+                            </p>
+                            <div className="flex items-center text-sm text-gray-500">
+                              <Clock className="w-4 h-4 mr-1" />
+                              <span>
+                                Created:{" "}
+                                {new Date(rec.date).toLocaleDateString()}
+                              </span>
+                              {rec.completed && (
+                                <span className="ml-4 text-green-600 font-medium flex items-center">
+                                  <CheckCircle className="w-4 h-4 mr-1" />
+                                  Completed
+                                </span>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                        <div className="ml-4">
-                          <button 
-                            onClick={handleViewDetails}
-                            className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors duration-200 flex items-center"
-                          >
-                            <Eye className="w-4 h-4 mr-2" />
-                            View Details
-                          </button>
+                          <div className="ml-4">
+                            <button
+                              onClick={handleGenerateSummary}
+                              className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors duration-200 flex items-center"
+                            >
+                              <Sparkles className="w-4 h-4 mr-2" />
+                              AI Summary
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
           {/* Quick Actions */}
           <div className="bg-white shadow-lg rounded-xl p-6">
@@ -540,11 +695,11 @@ const StudentDashboard = () => {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <button
-                onClick={handleViewDetails}
+                onClick={handleGenerateSummary}
                 className="group flex items-center justify-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
               >
-                <Eye className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform duration-200" />
-                <span>View Full Details</span>
+                <Sparkles className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform duration-200" />
+                <span>One-Click AI Summary</span>
                 <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-200" />
               </button>
               <button
@@ -568,22 +723,51 @@ const StudentDashboard = () => {
         </div>
       </div>
 
-      {/* Student Details Modal */}
-      {showModal && selectedStudent && (
-        <StudentDetailsModal
-          student={selectedStudent}
-          isOpen={showModal}
-          onClose={handleCloseModal}
-          showActions={false}
-        />
+      {/* AI Summary Modal */}
+      {showSummaryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[85vh] overflow-hidden">
+            <div className="px-6 py-4 border-b flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                <Sparkles className="w-5 h-5 mr-2 text-indigo-600" />
+                One-Page AI Student Summary
+              </h3>
+              <button
+                onClick={() => setShowSummaryModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                Close
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[65vh]">
+              {summaryLoading && (
+                <div className="text-center py-10">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+                  <p className="text-gray-600">Generating AI summary...</p>
+                </div>
+              )}
+
+              {!summaryLoading && summaryError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+                  {summaryError}
+                </div>
+              )}
+
+              {!summaryLoading && !summaryError && aiSummary && (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-5">
+                  <pre className="whitespace-pre-wrap text-sm leading-6 text-gray-800 font-sans">
+                    {aiSummary}
+                  </pre>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Action History Modal */}
       {showActions && studentData && (
-        <ActionHistory
-          student={studentData}
-          onClose={handleCloseActions}
-        />
+        <ActionHistory student={studentData} onClose={handleCloseActions} />
       )}
 
       {/* Progress Report Modal */}

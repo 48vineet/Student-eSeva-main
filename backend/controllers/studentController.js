@@ -1,8 +1,9 @@
 const Student = require("../models/Student");
 const User = require("../models/User");
 const riskCalculator = require("../services/riskCalculator");
-const { predictRisk } = require("../services/mlService");
-const Config = require("../models/Config");
+const {
+  generateOnePageStudentSummary,
+} = require("../services/aiRecommendationService");
 const {
   sendActionApprovalEmail,
   sendActionStatusUpdateEmail,
@@ -174,6 +175,64 @@ async function getStudentById(req, res, next) {
 }
 
 /**
+ * Generate one-page AI summary for a student.
+ */
+async function getStudentAiSummary(req, res, next) {
+  try {
+    const { studentId } = req.params;
+    const student = await Student.findOne({ student_id: studentId }).lean();
+
+    if (!student) {
+      return res.status(404).json({ success: false, error: "Not found" });
+    }
+
+    const allGrades = getAllGradesFromDetailedFields(student);
+    const bySubject = new Map();
+
+    allGrades.forEach((grade) => {
+      const subject = grade.subject || "Unknown Subject";
+      const score = Number(grade.score);
+      if (!Number.isFinite(score)) return;
+
+      if (!bySubject.has(subject)) {
+        bySubject.set(subject, []);
+      }
+      bySubject.get(subject).push(score);
+    });
+
+    const passCriteria = 60;
+    const coursePerformance = Array.from(bySubject.entries()).map(
+      ([subject, scores]) => {
+        const average =
+          scores.length > 0
+            ? scores.reduce((sum, val) => sum + val, 0) / scores.length
+            : 0;
+
+        return {
+          subject,
+          averageScore: Number(average.toFixed(2)),
+          status: average >= passCriteria ? "passing" : "failing",
+        };
+      },
+    );
+
+    const result = await generateOnePageStudentSummary({
+      student,
+      coursePerformance,
+    });
+
+    res.json({
+      success: true,
+      summary: result.summary,
+      ai_meta: result.ai_meta,
+      coursePerformance,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
  * Dashboard summary: counts and average attendance with role-based visibility.
  */
 async function dashboardSummary(req, res, next) {
@@ -298,89 +357,31 @@ async function recalculateRisk(req, res, next) {
 
     const data = student.toObject();
 
-    // Rule-based risk calculation
-    const baseRisk = await riskCalculator.calculateRisk(data);
+    // Deterministic formula-based risk calculation
+    const riskAssessment = await riskCalculator.calculateRisk(data);
 
-    // Get current config for pass criteria
-    let config = await Config.findOne();
-    if (!config) {
-      config = new Config();
-      await config.save();
-    }
-
-    // Get all grades from detailed grade fields
-    const allGrades = getAllGradesFromDetailedFields(data);
-    const passCriteria = config.passCriteria || 60;
-
-    // Prepare ML features with dynamic pass criteria
-    const mlFeatures = {
-      attendance_rate: data.attendance_rate || 0,
-      avg_grade:
-        allGrades.length > 0
-          ? allGrades.reduce((sum, g) => sum + g.score, 0) / allGrades.length
-          : 0,
-      failing_count: allGrades.filter((g) => g.score < passCriteria).length,
-      days_overdue: data.days_overdue || 0,
-      attempts: 0, // Attempts removed from system
-    };
-
-    console.log(`Prepared ML features for ${data.student_id}:`, mlFeatures);
-
-    // ML risk prediction
-    let mlResult = { risk_level: "low", risk_score: 0 };
-    try {
-      console.log(
-        `Recalculating ML risk for ${data.student_id} with features:`,
-        mlFeatures,
-      );
-      mlResult = await predictRisk(mlFeatures);
-      console.log(`ML recalculation result for ${data.student_id}:`, mlResult);
-
-      // Validate ML result
-      if (!mlResult || !mlResult.risk_level) {
-        console.error(`Invalid ML result for ${data.student_id}:`, mlResult);
-        throw new Error("Invalid ML result");
-      }
-    } catch (error) {
-      console.error(
-        `ML recalculation failed for ${data.student_id}:`,
-        error.message,
-      );
-      console.error(`ML recalculation error details:`, error);
-      // Use rule-based as fallback
-      mlResult = {
-        risk_level: baseRisk.risk_level,
-        risk_score: baseRisk.risk_score,
-      };
-    }
-
-    // Combine ML and rule-based results
-    const finalRisk = {
-      risk_level: mlResult.risk_level || baseRisk.risk_level,
-      risk_score: mlResult.risk_score || baseRisk.risk_score,
-      risk_factors: baseRisk.risk_factors,
-      explanation: baseRisk.explanation,
-      recommendations: baseRisk.recommendations,
-    };
-
-    console.log(`Final recalculated risk for ${data.student_id}:`, finalRisk);
-
-    // Update student with new risk data
     console.log(
-      `Updating student ${data.student_id} with risk data:`,
-      finalRisk,
+      `Updating student ${data.student_id} with deterministic risk data:`,
+      riskAssessment,
     );
-    student.risk_level = finalRisk.risk_level;
-    student.risk_score = finalRisk.risk_score;
-    student.risk_factors = finalRisk.risk_factors;
-    student.explanation = finalRisk.explanation;
-    student.recommendations = finalRisk.recommendations;
-    student.failed_subjects = mlFeatures.failing_count; // Add failed subjects count
+
+    student.risk_level = riskAssessment.risk_level;
+    student.risk_score = riskAssessment.risk_score;
+    student.risk_factors = riskAssessment.risk_factors;
+    student.explanation = riskAssessment.explanation;
+    student.recommendations = riskAssessment.recommendations;
+    student.failed_subjects = riskAssessment.failed_subjects || 0;
+    student.risk_calculation_log = riskAssessment.calculation_log || [];
+    student.risk_missing_data_reasons =
+      riskAssessment.missing_data_reasons || [];
+    student.risk_ai_meta = riskAssessment.ai_meta || {
+      provider: "none",
+      model: null,
+      status: "not-used",
+    };
     student.last_updated = new Date();
 
-    console.log(`Student before save - risk_score: ${student.risk_score}`);
     await student.save();
-    console.log(`Student after save - risk_score: ${student.risk_score}`);
 
     res.json({ success: true, student });
   } catch (err) {
@@ -589,6 +590,14 @@ async function deleteExamData(req, res, next) {
     student.risk_factors = [];
     student.explanation = [];
     student.recommendations = [];
+    student.failed_subjects = 0;
+    student.risk_calculation_log = [];
+    student.risk_missing_data_reasons = [];
+    student.risk_ai_meta = {
+      provider: "none",
+      model: null,
+      status: "not-calculated",
+    };
 
     student.last_updated = new Date();
     await student.save();
@@ -648,6 +657,14 @@ async function deleteAttendanceData(req, res, next) {
     student.risk_factors = [];
     student.explanation = [];
     student.recommendations = [];
+    student.failed_subjects = 0;
+    student.risk_calculation_log = [];
+    student.risk_missing_data_reasons = [];
+    student.risk_ai_meta = {
+      provider: "none",
+      model: null,
+      status: "not-calculated",
+    };
 
     student.last_updated = new Date();
     await student.save();
@@ -711,6 +728,14 @@ async function deleteFeesData(req, res, next) {
     student.risk_factors = [];
     student.explanation = [];
     student.recommendations = [];
+    student.failed_subjects = 0;
+    student.risk_calculation_log = [];
+    student.risk_missing_data_reasons = [];
+    student.risk_ai_meta = {
+      provider: "none",
+      model: null,
+      status: "not-calculated",
+    };
 
     student.last_updated = new Date();
     await student.save();
@@ -860,23 +885,21 @@ async function recalculateAllRisks(req, res, next) {
           );
 
           if (riskAssessment) {
-            // Calculate failed subjects count
-            const allGrades = getAllGradesFromDetailedFields(
-              student.toObject(),
-            );
-            const config = await Config.findOne();
-            const passCriteria = config?.passCriteria || 60;
-            const failingCount = allGrades.filter(
-              (grade) => grade.score < passCriteria,
-            ).length;
-
-            // Update student with new risk data
+            // Update student with deterministic risk data
             student.risk_level = riskAssessment.risk_level;
             student.risk_score = riskAssessment.risk_score;
             student.risk_factors = riskAssessment.risk_factors;
             student.explanation = riskAssessment.explanation;
             student.recommendations = riskAssessment.recommendations;
-            student.failed_subjects = failingCount; // Add failed subjects count
+            student.failed_subjects = riskAssessment.failed_subjects || 0;
+            student.risk_calculation_log = riskAssessment.calculation_log || [];
+            student.risk_missing_data_reasons =
+              riskAssessment.missing_data_reasons || [];
+            student.risk_ai_meta = riskAssessment.ai_meta || {
+              provider: "none",
+              model: null,
+              status: "not-used",
+            };
             student.last_updated = new Date();
 
             await student.save();
@@ -897,6 +920,14 @@ async function recalculateAllRisks(req, res, next) {
           student.risk_factors = [];
           student.explanation = [];
           student.recommendations = [];
+          student.failed_subjects = 0;
+          student.risk_calculation_log = [];
+          student.risk_missing_data_reasons = [];
+          student.risk_ai_meta = {
+            provider: "none",
+            model: null,
+            status: "not-calculated",
+          };
           student.last_updated = new Date();
 
           await student.save();
@@ -933,6 +964,7 @@ async function recalculateAllRisks(req, res, next) {
 module.exports = {
   getStudents,
   getStudentById,
+  getStudentAiSummary,
   dashboardSummary,
   recalculateRisk,
   createAction,

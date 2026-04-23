@@ -1,44 +1,34 @@
-import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
 import {
-  Save,
-  RefreshCw,
-  ArrowLeft,
-  Settings as SettingsIcon,
   AlertTriangle,
-  CheckCircle,
-  Shield,
-  Users,
-  TrendingUp,
-  Clock,
-  DollarSign,
-  BookOpen,
-  Target,
-  Zap,
-  Sparkles,
-  Activity,
-  BarChart3,
-  Eye,
-  Heart,
-  Lightbulb,
-  Database,
-  Globe,
-  Lock,
-  Unlock,
-  RotateCcw,
-  CheckCircle2,
-  XCircle,
-  Info,
+  ArrowLeft,
   ArrowRight,
-  Star,
   Award,
   Bell,
+  BookOpen,
+  CheckCircle,
+  CheckCircle2,
+  DollarSign,
+  Eye,
+  Globe,
+  Info,
+  RefreshCw,
+  RotateCcw,
+  Save,
+  Settings as SettingsIcon,
+  Sparkles,
+  Target,
+  TrendingUp,
+  Users,
+  XCircle,
 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useConfig } from "../context/ConfigContext";
 import { useNotification } from "../hooks/useNotification";
 
 const Settings = () => {
-  const { config, loading, error, updateConfig, fetchConfig, resetConfig } = useConfig();
+  const { config, loading, error, updateConfig, fetchConfig, resetConfig } =
+    useConfig();
   const { notifications, showSuccess, showError, removeNotification } =
     useNotification();
 
@@ -49,6 +39,7 @@ const Settings = () => {
     failingHigh: 2,
     failingMedium: 1,
     overdueDays: 30,
+    collegeFees: 0,
     institutionName: "Student eSeva Institution",
     academicYear: new Date().getFullYear().toString(),
     semester: "1",
@@ -67,14 +58,14 @@ const Settings = () => {
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
-  const [activeTab, setActiveTab] = useState('attendance');
+  const [activeTab, setActiveTab] = useState("attendance");
 
   // Load config into form when it changes
   useEffect(() => {
     if (config && !loading) {
-      setFormData(prevData => ({
+      setFormData((prevData) => ({
         ...prevData,
-        ...config
+        ...config,
       }));
     }
   }, [config, loading]);
@@ -88,7 +79,7 @@ const Settings = () => {
   useEffect(() => {
     if (config) {
       const changed = Object.keys(formData).some(
-        (key) => formData[key] !== config[key]
+        (key) => formData[key] !== config[key],
       );
       setHasChanges(changed);
     }
@@ -136,179 +127,222 @@ const Settings = () => {
   };
 
   const tabs = [
-    { id: 'attendance', label: 'Attendance', icon: Users, color: 'from-blue-500 to-cyan-500' },
-    { id: 'academic', label: 'Academic', icon: BookOpen, color: 'from-emerald-500 to-teal-500' },
-    { id: 'financial', label: 'Financial', icon: DollarSign, color: 'from-yellow-500 to-orange-500' },
-    { id: 'institution', label: 'Institution', icon: Globe, color: 'from-indigo-500 to-purple-500' },
-    { id: 'notifications', label: 'Notifications', icon: Bell, color: 'from-pink-500 to-rose-500' },
-    { id: 'preview', label: 'Preview', icon: Eye, color: 'from-purple-500 to-pink-500' },
+    {
+      id: "attendance",
+      label: "Attendance",
+      icon: Users,
+      color: "from-blue-500 to-cyan-500",
+    },
+    {
+      id: "academic",
+      label: "Academic",
+      icon: BookOpen,
+      color: "from-emerald-500 to-teal-500",
+    },
+    {
+      id: "financial",
+      label: "Financial",
+      icon: DollarSign,
+      color: "from-yellow-500 to-orange-500",
+    },
+    {
+      id: "institution",
+      label: "Institution",
+      icon: Globe,
+      color: "from-indigo-500 to-purple-500",
+    },
+    {
+      id: "notifications",
+      label: "Notifications",
+      icon: Bell,
+      color: "from-pink-500 to-rose-500",
+    },
+    {
+      id: "preview",
+      label: "Preview",
+      icon: Eye,
+      color: "from-purple-500 to-pink-500",
+    },
   ];
 
   const configSections = [
     {
-      id: 'attendance',
-      title: 'Attendance Thresholds',
-      description: 'Set the attendance rate boundaries for risk classification',
+      id: "attendance",
+      title: "Attendance Thresholds",
+      description: "Set the attendance rate boundaries for risk classification",
       icon: Users,
-      color: 'from-blue-500 to-cyan-500',
-      bgColor: 'from-blue-50 to-cyan-50',
+      color: "from-blue-500 to-cyan-500",
+      bgColor: "from-blue-50 to-cyan-50",
       fields: [
         {
-          key: 'attendanceCritical',
-          label: 'Critical Attendance Threshold (%)',
-          description: 'Students below this rate are marked as HIGH RISK',
-          type: 'number',
+          key: "attendanceCritical",
+          label: "Critical Attendance Threshold (%)",
+          description: "Students below this rate are marked as HIGH RISK",
+          type: "number",
           min: 0,
           max: 100,
           step: 0.1,
-          riskLevel: 'HIGH',
-          riskColor: 'text-red-600'
+          riskLevel: "HIGH",
+          riskColor: "text-red-600",
         },
         {
-          key: 'attendanceWarning',
-          label: 'Warning Attendance Threshold (%)',
-          description: 'Students below this rate are marked as MEDIUM RISK',
-          type: 'number',
+          key: "attendanceWarning",
+          label: "Warning Attendance Threshold (%)",
+          description: "Students below this rate are marked as MEDIUM RISK",
+          type: "number",
           min: 0,
           max: 100,
           step: 0.1,
-          riskLevel: 'MEDIUM',
-          riskColor: 'text-yellow-600'
-        }
-      ]
+          riskLevel: "MEDIUM",
+          riskColor: "text-yellow-600",
+        },
+      ],
     },
     {
-      id: 'academic',
-      title: 'Academic Performance',
-      description: 'Configure pass criteria and failing subject thresholds',
+      id: "academic",
+      title: "Academic Performance",
+      description: "Configure pass criteria and failing subject thresholds",
       icon: BookOpen,
-      color: 'from-emerald-500 to-teal-500',
-      bgColor: 'from-emerald-50 to-teal-50',
+      color: "from-emerald-500 to-teal-500",
+      bgColor: "from-emerald-50 to-teal-50",
       fields: [
         {
-          key: 'passCriteria',
-          label: 'Pass Criteria (out of 100)',
-          description: 'Minimum score required to pass a subject (0-100)',
-          type: 'number',
+          key: "passCriteria",
+          label: "Pass Criteria (out of 100)",
+          description: "Minimum score required to pass a subject (0-100)",
+          type: "number",
           min: 0,
           max: 100,
-          riskLevel: 'INFO',
-          riskColor: 'text-blue-600'
+          riskLevel: "INFO",
+          riskColor: "text-blue-600",
         },
         {
-          key: 'failingHigh',
-          label: 'High Risk Failing Subjects',
-          description: 'Students failing this many or more subjects → HIGH RISK',
-          type: 'number',
+          key: "failingHigh",
+          label: "High Risk Failing Subjects",
+          description:
+            "Students failing this many or more subjects → HIGH RISK",
+          type: "number",
           min: 1,
           max: 10,
-          riskLevel: 'HIGH',
-          riskColor: 'text-red-600'
+          riskLevel: "HIGH",
+          riskColor: "text-red-600",
         },
         {
-          key: 'failingMedium',
-          label: 'Medium Risk Failing Subjects',
-          description: 'Students failing this many subjects → MEDIUM RISK',
-          type: 'number',
+          key: "failingMedium",
+          label: "Medium Risk Failing Subjects",
+          description: "Students failing this many subjects → MEDIUM RISK",
+          type: "number",
           min: 1,
           max: 10,
-          riskLevel: 'MEDIUM',
-          riskColor: 'text-yellow-600'
-        }
-      ]
+          riskLevel: "MEDIUM",
+          riskColor: "text-yellow-600",
+        },
+      ],
     },
     {
-      id: 'financial',
-      title: 'Financial Settings',
-      description: 'Set thresholds for fee payments and financial risk assessment',
+      id: "financial",
+      title: "Financial Settings",
+      description:
+        "Set thresholds for fee payments and financial risk assessment",
       icon: DollarSign,
-      color: 'from-yellow-500 to-orange-500',
-      bgColor: 'from-yellow-50 to-orange-50',
+      color: "from-yellow-500 to-orange-500",
+      bgColor: "from-yellow-50 to-orange-50",
       fields: [
         {
-          key: 'overdueDays',
-          label: 'Fee Overdue Days (High Risk)',
-          description: 'Fees overdue for this many days → HIGH RISK',
-          type: 'number',
+          key: "overdueDays",
+          label: "Fee Overdue Days (High Risk)",
+          description: "Fees overdue for this many days → HIGH RISK",
+          type: "number",
           min: 1,
           max: 365,
-          riskLevel: 'HIGH',
-          riskColor: 'text-red-600'
-        }
-      ]
+          riskLevel: "HIGH",
+          riskColor: "text-red-600",
+        },
+      ],
     },
     {
-      id: 'institution',
-      title: 'Institution Settings',
-      description: 'Configure institution details and academic information',
+      id: "institution",
+      title: "Institution Settings",
+      description: "Configure institution details and academic information",
       icon: Globe,
-      color: 'from-indigo-500 to-purple-500',
-      bgColor: 'from-indigo-50 to-purple-50',
+      color: "from-indigo-500 to-purple-500",
+      bgColor: "from-indigo-50 to-purple-50",
       fields: [
         {
-          key: 'institutionName',
-          label: 'Institution Name',
-          description: 'Name of your educational institution',
-          type: 'text',
-          riskLevel: 'INFO',
-          riskColor: 'text-blue-600'
+          key: "institutionName",
+          label: "Institution Name",
+          description: "Name of your educational institution",
+          type: "text",
+          riskLevel: "INFO",
+          riskColor: "text-blue-600",
         },
         {
-          key: 'academicYear',
-          label: 'Academic Year',
-          description: 'Current academic year (e.g., 2024)',
-          type: 'text',
-          riskLevel: 'INFO',
-          riskColor: 'text-blue-600'
+          key: "collegeFees",
+          label: "College Fees Amount",
+          description:
+            "Total fee amount used to infer due balance when upload file omits Amount Due",
+          type: "number",
+          min: 0,
+          step: 0.01,
+          riskLevel: "INFO",
+          riskColor: "text-blue-600",
         },
         {
-          key: 'semester',
-          label: 'Current Semester',
-          description: 'Current semester or term',
-          type: 'select',
+          key: "academicYear",
+          label: "Academic Year",
+          description: "Current academic year (e.g., 2024)",
+          type: "text",
+          riskLevel: "INFO",
+          riskColor: "text-blue-600",
+        },
+        {
+          key: "semester",
+          label: "Current Semester",
+          description: "Current semester or term",
+          type: "select",
           options: [
-            { value: '1', label: 'Semester 1' },
-            { value: '2', label: 'Semester 2' },
-            { value: '3', label: 'Semester 3' },
-            { value: '4', label: 'Semester 4' },
-            { value: '5', label: 'Semester 5' },
-            { value: '6', label: 'Semester 6' },
-            { value: '7', label: 'Semester 7' },
-            { value: '8', label: 'Semester 8' },
-            { value: 'Summer', label: 'Summer Term' },
-            { value: 'Winter', label: 'Winter Term' }
+            { value: "1", label: "Semester 1" },
+            { value: "2", label: "Semester 2" },
+            { value: "3", label: "Semester 3" },
+            { value: "4", label: "Semester 4" },
+            { value: "5", label: "Semester 5" },
+            { value: "6", label: "Semester 6" },
+            { value: "7", label: "Semester 7" },
+            { value: "8", label: "Semester 8" },
+            { value: "Summer", label: "Summer Term" },
+            { value: "Winter", label: "Winter Term" },
           ],
-          riskLevel: 'INFO',
-          riskColor: 'text-blue-600'
-        }
-      ]
+          riskLevel: "INFO",
+          riskColor: "text-blue-600",
+        },
+      ],
     },
     {
-      id: 'notifications',
-      title: 'Notification Settings',
-      description: 'Configure how alerts and notifications are sent',
+      id: "notifications",
+      title: "Notification Settings",
+      description: "Configure how alerts and notifications are sent",
       icon: Bell,
-      color: 'from-pink-500 to-rose-500',
-      bgColor: 'from-pink-50 to-rose-50',
+      color: "from-pink-500 to-rose-500",
+      bgColor: "from-pink-50 to-rose-50",
       fields: [
         {
-          key: 'emailNotifications',
-          label: 'Email Notifications',
-          description: 'Send alerts via email to stakeholders',
-          type: 'checkbox',
-          riskLevel: 'INFO',
-          riskColor: 'text-blue-600'
+          key: "emailNotifications",
+          label: "Email Notifications",
+          description: "Send alerts via email to stakeholders",
+          type: "checkbox",
+          riskLevel: "INFO",
+          riskColor: "text-blue-600",
         },
         {
-          key: 'smsNotifications',
-          label: 'SMS Notifications',
-          description: 'Send alerts via SMS (requires SMS service setup)',
-          type: 'checkbox',
-          riskLevel: 'INFO',
-          riskColor: 'text-blue-600'
-        }
-      ]
-    }
+          key: "smsNotifications",
+          label: "SMS Notifications",
+          description: "Send alerts via SMS (requires SMS service setup)",
+          type: "checkbox",
+          riskLevel: "INFO",
+          riskColor: "text-blue-600",
+        },
+      ],
+    },
   ];
 
   // Show loading state while config is being fetched
@@ -328,8 +362,14 @@ const Settings = () => {
       {/* Animated Background */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
+        <div
+          className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl animate-pulse"
+          style={{ animationDelay: "1s" }}
+        ></div>
+        <div
+          className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse"
+          style={{ animationDelay: "2s" }}
+        ></div>
       </div>
 
       {/* Navigation */}
@@ -347,7 +387,9 @@ const Settings = () => {
               <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl">
                 <SettingsIcon className="w-8 h-8 text-white" />
               </div>
-              <span className="text-2xl font-bold text-white">System Configuration</span>
+              <span className="text-2xl font-bold text-white">
+                System Configuration
+              </span>
             </div>
           </div>
           <div className="flex space-x-4">
@@ -356,7 +398,9 @@ const Settings = () => {
               disabled={loading}
               className="group flex items-center space-x-2 px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all duration-200 transform hover:scale-105 disabled:opacity-50"
             >
-              <RefreshCw className={`w-5 h-5 group-hover:rotate-180 transition-transform duration-500 ${loading ? "animate-spin" : ""}`} />
+              <RefreshCw
+                className={`w-5 h-5 group-hover:rotate-180 transition-transform duration-500 ${loading ? "animate-spin" : ""}`}
+              />
               <span>Refresh</span>
             </button>
           </div>
@@ -366,23 +410,30 @@ const Settings = () => {
       {/* Main Content */}
       <div className="relative z-10 max-w-7xl mx-auto px-6 py-8">
         {/* Hero Section */}
-        <div className={`text-center mb-12 transform transition-all duration-1000 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+        <div
+          className={`text-center mb-12 transform transition-all duration-1000 ${isVisible ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0"}`}
+        >
           <div className="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-sm rounded-full px-6 py-3 mb-8 border border-white/20">
             <Sparkles className="w-5 h-5 text-yellow-400 animate-pulse" />
-            <span className="text-white/90 font-medium">AI-Powered Configuration</span>
+            <span className="text-white/90 font-medium">
+              AI-Powered Configuration
+            </span>
           </div>
-          
+
           <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-white via-blue-100 to-cyan-100 bg-clip-text text-transparent leading-tight">
             System Configuration
           </h1>
-          
+
           <p className="text-xl md:text-2xl text-white/80 max-w-4xl mx-auto leading-relaxed">
-            Fine-tune risk assessment thresholds and system behavior to match your institution's specific needs
+            Fine-tune risk assessment thresholds and system behavior to match
+            your institution's specific needs
           </p>
         </div>
 
         {/* Tab Navigation */}
-        <div className={`mb-8 transform transition-all duration-1000 delay-300 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+        <div
+          className={`mb-8 transform transition-all duration-1000 delay-300 ${isVisible ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0"}`}
+        >
           <div className="flex flex-wrap justify-center gap-4">
             {tabs.map((tab, index) => (
               <button
@@ -391,9 +442,9 @@ const Settings = () => {
                 className={`group relative flex items-center space-x-3 px-6 py-4 rounded-2xl font-semibold transition-all duration-300 transform hover:scale-105 ${
                   activeTab === tab.id
                     ? `bg-gradient-to-r ${tab.color} text-white shadow-2xl`
-                    : 'bg-white/10 backdrop-blur-sm text-white/80 hover:bg-white/20 hover:text-white border border-white/20'
+                    : "bg-white/10 backdrop-blur-sm text-white/80 hover:bg-white/20 hover:text-white border border-white/20"
                 }`}
-                style={{animationDelay: `${index * 0.1}s`}}
+                style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <tab.icon className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" />
                 <span>{tab.label}</span>
@@ -406,23 +457,31 @@ const Settings = () => {
         </div>
 
         {/* Configuration Sections */}
-        <div className={`transform transition-all duration-1000 delay-500 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
-          {activeTab !== 'preview' && (
+        <div
+          className={`transform transition-all duration-1000 delay-500 ${isVisible ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0"}`}
+        >
+          {activeTab !== "preview" && (
             <div className="space-y-8">
               {configSections
-                .filter(section => section.id === activeTab)
+                .filter((section) => section.id === activeTab)
                 .map((section) => (
                   <div
                     key={section.id}
                     className="bg-white/10 backdrop-blur-sm rounded-3xl p-8 border border-white/20 hover:bg-white/20 transition-all duration-500 transform hover:scale-[1.02]"
                   >
                     <div className="flex items-center space-x-4 mb-8">
-                      <div className={`p-4 rounded-2xl bg-gradient-to-r ${section.color}`}>
+                      <div
+                        className={`p-4 rounded-2xl bg-gradient-to-r ${section.color}`}
+                      >
                         <section.icon className="w-8 h-8 text-white" />
                       </div>
                       <div>
-                        <h2 className="text-3xl font-bold text-white mb-2">{section.title}</h2>
-                        <p className="text-white/70 text-lg">{section.description}</p>
+                        <h2 className="text-3xl font-bold text-white mb-2">
+                          {section.title}
+                        </h2>
+                        <p className="text-white/70 text-lg">
+                          {section.description}
+                        </p>
                       </div>
                     </div>
 
@@ -431,34 +490,45 @@ const Settings = () => {
                         <div
                           key={field.key}
                           className="group bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-all duration-300 transform hover:scale-105"
-                          style={{animationDelay: `${index * 0.1}s`}}
+                          style={{ animationDelay: `${index * 0.1}s` }}
                         >
                           <label className="block text-lg font-semibold text-white mb-3">
                             {field.label}
                           </label>
                           <div className="relative">
-                            {field.type === 'select' ? (
+                            {field.type === "select" ? (
                               <select
-                                value={formData[field.key] || ''}
-                                onChange={(e) => handleInputChange(field.key, e.target.value)}
+                                value={formData[field.key] || ""}
+                                onChange={(e) =>
+                                  handleInputChange(field.key, e.target.value)
+                                }
                                 className="w-full px-6 py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white text-xl font-semibold focus:ring-4 focus:ring-white/30 focus:border-transparent transition-all duration-300 appearance-none"
                               >
                                 {field.options?.map((option) => (
-                                  <option key={option.value} value={option.value} className="bg-gray-800 text-white">
+                                  <option
+                                    key={option.value}
+                                    value={option.value}
+                                    className="bg-gray-800 text-white"
+                                  >
                                     {option.label}
                                   </option>
                                 ))}
                               </select>
-                            ) : field.type === 'checkbox' ? (
+                            ) : field.type === "checkbox" ? (
                               <div className="flex items-center space-x-4">
                                 <input
                                   type="checkbox"
                                   checked={formData[field.key] || false}
-                                  onChange={(e) => handleInputChange(field.key, e.target.checked)}
+                                  onChange={(e) =>
+                                    handleInputChange(
+                                      field.key,
+                                      e.target.checked,
+                                    )
+                                  }
                                   className="w-6 h-6 text-blue-600 bg-white/10 border-white/20 rounded focus:ring-4 focus:ring-white/30"
                                 />
                                 <span className="text-white/80 text-lg">
-                                  {formData[field.key] ? 'Enabled' : 'Disabled'}
+                                  {formData[field.key] ? "Enabled" : "Disabled"}
                                 </span>
                               </div>
                             ) : (
@@ -467,14 +537,18 @@ const Settings = () => {
                                 min={field.min}
                                 max={field.max}
                                 step={field.step}
-                                value={formData[field.key] || ''}
-                                onChange={(e) => handleInputChange(field.key, e.target.value)}
+                                value={formData[field.key] || ""}
+                                onChange={(e) =>
+                                  handleInputChange(field.key, e.target.value)
+                                }
                                 className="w-full px-6 py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white text-xl font-semibold focus:ring-4 focus:ring-white/30 focus:border-transparent transition-all duration-300 placeholder-white/50"
                                 placeholder={`Enter ${field.label.toLowerCase()}`}
                               />
                             )}
                             <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
-                              <div className={`p-2 rounded-lg bg-gradient-to-r ${section.color}`}>
+                              <div
+                                className={`p-2 rounded-lg bg-gradient-to-r ${section.color}`}
+                              >
                                 <Target className="w-4 h-4 text-white" />
                               </div>
                             </div>
@@ -483,10 +557,14 @@ const Settings = () => {
                             {field.description}
                           </p>
                           <div className="mt-4 flex items-center space-x-2">
-                            <div className={`px-3 py-1 rounded-full bg-gradient-to-r ${section.color} text-white text-sm font-bold`}>
+                            <div
+                              className={`px-3 py-1 rounded-full bg-gradient-to-r ${section.color} text-white text-sm font-bold`}
+                            >
                               {field.riskLevel} RISK
                             </div>
-                            <span className="text-white/60 text-sm">Trigger Level</span>
+                            <span className="text-white/60 text-sm">
+                              Trigger Level
+                            </span>
                           </div>
                         </div>
                       ))}
@@ -497,15 +575,19 @@ const Settings = () => {
           )}
 
           {/* Preview Tab */}
-          {activeTab === 'preview' && (
+          {activeTab === "preview" && (
             <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-8 border border-white/20">
               <div className="flex items-center space-x-4 mb-8">
                 <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500">
                   <Eye className="w-8 h-8 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-3xl font-bold text-white mb-2">Risk Assessment Preview</h2>
-                  <p className="text-white/70 text-lg">See how your current settings will categorize students</p>
+                  <h2 className="text-3xl font-bold text-white mb-2">
+                    Risk Assessment Preview
+                  </h2>
+                  <p className="text-white/70 text-lg">
+                    See how your current settings will categorize students
+                  </p>
                 </div>
               </div>
 
@@ -521,7 +603,9 @@ const Settings = () => {
                   <div className="space-y-3">
                     <div className="flex items-center space-x-2 text-red-200">
                       <Users className="w-4 h-4" />
-                      <span>Attendance ≤ {formData.attendanceCritical || 0}%</span>
+                      <span>
+                        Attendance ≤ {formData.attendanceCritical || 0}%
+                      </span>
                     </div>
                     <div className="flex items-center space-x-2 text-red-200">
                       <BookOpen className="w-4 h-4" />
@@ -529,7 +613,9 @@ const Settings = () => {
                     </div>
                     <div className="flex items-center space-x-2 text-red-200">
                       <DollarSign className="w-4 h-4" />
-                      <span>Fees overdue {formData.overdueDays || 0}+ days</span>
+                      <span>
+                        Fees overdue {formData.overdueDays || 0}+ days
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -540,12 +626,17 @@ const Settings = () => {
                     <div className="p-3 bg-yellow-500 rounded-xl">
                       <Target className="w-6 h-6 text-white" />
                     </div>
-                    <h3 className="text-2xl font-bold text-white">Medium Risk</h3>
+                    <h3 className="text-2xl font-bold text-white">
+                      Medium Risk
+                    </h3>
                   </div>
                   <div className="space-y-3">
                     <div className="flex items-center space-x-2 text-yellow-200">
                       <Users className="w-4 h-4" />
-                      <span>Attendance {(formData.attendanceCritical || 0) + 1}-{formData.attendanceWarning || 0}%</span>
+                      <span>
+                        Attendance {(formData.attendanceCritical || 0) + 1}-
+                        {formData.attendanceWarning || 0}%
+                      </span>
                     </div>
                     <div className="flex items-center space-x-2 text-yellow-200">
                       <BookOpen className="w-4 h-4" />
@@ -573,7 +664,9 @@ const Settings = () => {
                   <div className="space-y-3">
                     <div className="flex items-center space-x-2 text-green-200">
                       <Users className="w-4 h-4" />
-                      <span>Attendance &gt; {formData.attendanceWarning || 0}%</span>
+                      <span>
+                        Attendance &gt; {formData.attendanceWarning || 0}%
+                      </span>
                     </div>
                     <div className="flex items-center space-x-2 text-green-200">
                       <BookOpen className="w-4 h-4" />
@@ -594,7 +687,9 @@ const Settings = () => {
           )}
 
           {/* Action Buttons */}
-          <div className={`mt-12 flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0 sm:space-x-6 transform transition-all duration-1000 delay-700 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+          <div
+            className={`mt-12 flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0 sm:space-x-6 transform transition-all duration-1000 delay-700 ${isVisible ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0"}`}
+          >
             <div className="flex space-x-4">
               <button
                 onClick={handleReset}
@@ -663,18 +758,24 @@ const Settings = () => {
               notification.type === "success"
                 ? "bg-gradient-to-r from-green-500 to-emerald-600 border-green-400"
                 : notification.type === "error"
-                ? "bg-gradient-to-r from-red-500 to-rose-600 border-red-400"
-                : notification.type === "warning"
-                ? "bg-gradient-to-r from-yellow-500 to-orange-600 border-yellow-400"
-                : "bg-gradient-to-r from-blue-500 to-indigo-600 border-blue-400"
+                  ? "bg-gradient-to-r from-red-500 to-rose-600 border-red-400"
+                  : notification.type === "warning"
+                    ? "bg-gradient-to-r from-yellow-500 to-orange-600 border-yellow-400"
+                    : "bg-gradient-to-r from-blue-500 to-indigo-600 border-blue-400"
             }`}
-            style={{animationDelay: `${index * 0.1}s`}}
+            style={{ animationDelay: `${index * 0.1}s` }}
           >
             <div className="flex items-center space-x-3">
               <div className="flex-shrink-0">
-                {notification.type === "success" && <CheckCircle2 className="w-5 h-5" />}
-                {notification.type === "error" && <XCircle className="w-5 h-5" />}
-                {notification.type === "warning" && <AlertTriangle className="w-5 h-5" />}
+                {notification.type === "success" && (
+                  <CheckCircle2 className="w-5 h-5" />
+                )}
+                {notification.type === "error" && (
+                  <XCircle className="w-5 h-5" />
+                )}
+                {notification.type === "warning" && (
+                  <AlertTriangle className="w-5 h-5" />
+                )}
                 {!notification.type && <Info className="w-5 h-5" />}
               </div>
               <div className="flex-1">

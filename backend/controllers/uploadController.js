@@ -1,7 +1,6 @@
 const { parseFile } = require("../utils/parseExcel");
 const Student = require("../models/Student");
 const riskCalculator = require("../services/riskCalculator");
-const { predictRisk } = require("../services/mlService");
 const Config = require("../models/Config");
 const {
   sendStudentNotificationEmail,
@@ -181,6 +180,16 @@ async function processStudentDataUpload(req, res, next) {
               student.risk_factors = riskAssessment.risk_factors;
               student.explanation = riskAssessment.explanation;
               student.recommendations = riskAssessment.recommendations;
+              student.failed_subjects = riskAssessment.failed_subjects || 0;
+              student.risk_calculation_log =
+                riskAssessment.calculation_log || [];
+              student.risk_missing_data_reasons =
+                riskAssessment.missing_data_reasons || [];
+              student.risk_ai_meta = riskAssessment.ai_meta || {
+                provider: "none",
+                model: null,
+                status: "not-used",
+              };
 
               console.log(`Risk calculated for ${student_id}:`, {
                 risk_level: riskAssessment.risk_level,
@@ -210,6 +219,14 @@ async function processStudentDataUpload(req, res, next) {
           student.risk_factors = [];
           student.explanation = [];
           student.recommendations = [];
+          student.failed_subjects = 0;
+          student.risk_calculation_log = [];
+          student.risk_missing_data_reasons = [];
+          student.risk_ai_meta = {
+            provider: "none",
+            model: null,
+            status: "not-calculated",
+          };
         }
 
         // Save the student with all updates
@@ -260,7 +277,6 @@ async function processStudentDataUpload(req, res, next) {
 
     res.json({
       success: true,
-      message: `Student data uploaded successfully${emailStatus}`,
       createdCount: createdStudents.length,
       emailCount: emailCount,
       emailsSent:
@@ -273,12 +289,10 @@ async function processStudentDataUpload(req, res, next) {
 }
 
 /**
- * Process attendance data upload (Faculty only) - Adds attendance to existing students
+ * Process attendance upload (Faculty only) - Updates attendance for existing students
  */
 async function processAttendanceUpload(req, res, next) {
   try {
-    console.log("Processing attendance data upload...");
-
     const rows = await parseFile(req.file.buffer, req.file.originalname);
     const updatedStudents = [];
 
@@ -339,6 +353,16 @@ async function processAttendanceUpload(req, res, next) {
                 student.risk_factors = riskAssessment.risk_factors;
                 student.explanation = riskAssessment.explanation;
                 student.recommendations = riskAssessment.recommendations;
+                student.failed_subjects = riskAssessment.failed_subjects || 0;
+                student.risk_calculation_log =
+                  riskAssessment.calculation_log || [];
+                student.risk_missing_data_reasons =
+                  riskAssessment.missing_data_reasons || [];
+                student.risk_ai_meta = riskAssessment.ai_meta || {
+                  provider: "none",
+                  model: null,
+                  status: "not-used",
+                };
 
                 console.log(`Risk calculated for ${student_id}:`, {
                   risk_level: riskAssessment.risk_level,
@@ -368,6 +392,14 @@ async function processAttendanceUpload(req, res, next) {
             student.risk_factors = [];
             student.explanation = [];
             student.recommendations = [];
+            student.failed_subjects = 0;
+            student.risk_calculation_log = [];
+            student.risk_missing_data_reasons = [];
+            student.risk_ai_meta = {
+              provider: "none",
+              model: null,
+              status: "not-calculated",
+            };
           }
 
           student.last_updated = new Date();
@@ -388,6 +420,16 @@ async function processAttendanceUpload(req, res, next) {
                 student.risk_factors = riskAssessment.risk_factors;
                 student.explanation = riskAssessment.explanation;
                 student.recommendations = riskAssessment.recommendations;
+                student.failed_subjects = riskAssessment.failed_subjects || 0;
+                student.risk_calculation_log =
+                  riskAssessment.calculation_log || [];
+                student.risk_missing_data_reasons =
+                  riskAssessment.missing_data_reasons || [];
+                student.risk_ai_meta = riskAssessment.ai_meta || {
+                  provider: "none",
+                  model: null,
+                  status: "not-used",
+                };
                 student.last_updated = new Date();
 
                 await student.save();
@@ -411,6 +453,14 @@ async function processAttendanceUpload(req, res, next) {
             student.risk_factors = [];
             student.explanation = [];
             student.recommendations = [];
+            student.failed_subjects = 0;
+            student.risk_calculation_log = [];
+            student.risk_missing_data_reasons = [];
+            student.risk_ai_meta = {
+              provider: "none",
+              model: null,
+              status: "not-calculated",
+            };
             await student.save();
 
             console.log(
@@ -664,6 +714,16 @@ async function processExamDataUpload(req, res, next) {
               student.risk_factors = riskAssessment.risk_factors;
               student.explanation = riskAssessment.explanation;
               student.recommendations = riskAssessment.recommendations;
+              student.failed_subjects = riskAssessment.failed_subjects || 0;
+              student.risk_calculation_log =
+                riskAssessment.calculation_log || [];
+              student.risk_missing_data_reasons =
+                riskAssessment.missing_data_reasons || [];
+              student.risk_ai_meta = riskAssessment.ai_meta || {
+                provider: "none",
+                model: null,
+                status: "not-used",
+              };
 
               console.log(`Risk calculated for ${student_id}:`, {
                 risk_level: riskAssessment.risk_level,
@@ -693,6 +753,14 @@ async function processExamDataUpload(req, res, next) {
           student.risk_factors = [];
           student.explanation = [];
           student.recommendations = [];
+          student.failed_subjects = 0;
+          student.risk_calculation_log = [];
+          student.risk_missing_data_reasons = [];
+          student.risk_ai_meta = {
+            provider: "none",
+            model: null,
+            status: "not-calculated",
+          };
         }
 
         await student.save();
@@ -712,6 +780,16 @@ async function processExamDataUpload(req, res, next) {
               student.risk_factors = riskAssessment.risk_factors;
               student.explanation = riskAssessment.explanation;
               student.recommendations = riskAssessment.recommendations;
+              student.failed_subjects = riskAssessment.failed_subjects || 0;
+              student.risk_calculation_log =
+                riskAssessment.calculation_log || [];
+              student.risk_missing_data_reasons =
+                riskAssessment.missing_data_reasons || [];
+              student.risk_ai_meta = riskAssessment.ai_meta || {
+                provider: "none",
+                model: null,
+                status: "not-used",
+              };
               student.last_updated = new Date();
 
               await student.save();
@@ -735,6 +813,14 @@ async function processExamDataUpload(req, res, next) {
           student.risk_factors = [];
           student.explanation = [];
           student.recommendations = [];
+          student.failed_subjects = 0;
+          student.risk_calculation_log = [];
+          student.risk_missing_data_reasons = [];
+          student.risk_ai_meta = {
+            provider: "none",
+            model: null,
+            status: "not-calculated",
+          };
           await student.save();
 
           console.log(
@@ -776,6 +862,10 @@ async function processFeesUpload(req, res, next) {
 
     const rows = await parseFile(req.file.buffer, req.file.originalname);
     const updatedStudents = [];
+    const config = await Config.findOne();
+    const configuredCollegeFees = Number(config?.collegeFees);
+    const hasConfiguredCollegeFees =
+      Number.isFinite(configuredCollegeFees) && configuredCollegeFees > 0;
 
     for (const row of rows) {
       if (!row["Student ID"] && !row["student_id"]) {
@@ -791,13 +881,28 @@ async function processFeesUpload(req, res, next) {
           row["Fee Status"] ||
           row["fee_status"],
       );
-      const amount_paid = parseFloat(
-        extractTextValue(row["Amount Paid"] || row["amount_paid"]) || 0,
+      const amountPaidRaw = extractTextValue(
+        row["Amount Paid"] || row["amount_paid"],
       );
-      const amount_due = parseFloat(
-        extractTextValue(row["Amount Due"] || row["amount_due"]) || 0,
+      const amountDueRaw = extractTextValue(
+        row["Amount Due"] || row["amount_due"],
       );
-      const due_date = extractTextValue(row["Due Date"] || row["due_date"]);
+      const parsedAmountPaid = parseFloat(amountPaidRaw || 0);
+      const parsedAmountDue = parseFloat(amountDueRaw || 0);
+      const amount_paid =
+        Number.isFinite(parsedAmountPaid) && parsedAmountPaid >= 0
+          ? parsedAmountPaid
+          : 0;
+      const hasExplicitAmountDue = amountDueRaw !== "";
+      let amount_due =
+        Number.isFinite(parsedAmountDue) && parsedAmountDue >= 0
+          ? parsedAmountDue
+          : 0;
+      if (!hasExplicitAmountDue && hasConfiguredCollegeFees) {
+        amount_due = Math.max(configuredCollegeFees - amount_paid, 0);
+      }
+      const dueDateInfo = parseDueDateValue(row["Due Date"] || row["due_date"]);
+      const due_date = dueDateInfo.text;
 
       if (student_id) {
         const student = await Student.findOne({ student_id });
@@ -813,19 +918,31 @@ async function processFeesUpload(req, res, next) {
             data_complete: student.data_complete,
           });
           // Update fees-related fields
-          student.fees_status = fees_status || "Pending";
           student.amount_paid = amount_paid;
           student.amount_due = amount_due;
           student.due_date = due_date;
 
-          // Calculate days overdue based on due date
-          if (due_date) {
-            const dueDate = new Date(due_date);
-            const today = new Date();
-            const diffTime = today - dueDate;
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            student.days_overdue = Math.max(0, diffDays);
+          // Calculate days overdue based on parsed due date
+          const daysOverdue = Number.isFinite(dueDateInfo.daysOverdue)
+            ? dueDateInfo.daysOverdue
+            : 0;
+          student.days_overdue = daysOverdue;
+
+          let resolvedFeesStatus = fees_status;
+          if (!resolvedFeesStatus) {
+            if (amount_due <= 0) {
+              resolvedFeesStatus = "Complete";
+            } else if (daysOverdue > 0) {
+              resolvedFeesStatus = "Overdue";
+            } else if (amount_paid > 0) {
+              resolvedFeesStatus = "Partial";
+            } else {
+              resolvedFeesStatus = "Due";
+            }
           }
+
+          student.fees_status = resolvedFeesStatus || "Pending";
+          student.fee_status = normalizeFeeStatus(resolvedFeesStatus);
 
           // Mark local guardian data as complete
           student.data_completion.local_guardian = true;
@@ -877,6 +994,14 @@ async function processFeesUpload(req, res, next) {
             student.risk_factors = [];
             student.explanation = [];
             student.recommendations = [];
+            student.failed_subjects = 0;
+            student.risk_calculation_log = [];
+            student.risk_missing_data_reasons = [];
+            student.risk_ai_meta = {
+              provider: "none",
+              model: null,
+              status: "not-calculated",
+            };
           }
 
           student.last_updated = new Date();
@@ -897,6 +1022,16 @@ async function processFeesUpload(req, res, next) {
                 student.risk_factors = riskAssessment.risk_factors;
                 student.explanation = riskAssessment.explanation;
                 student.recommendations = riskAssessment.recommendations;
+                student.failed_subjects = riskAssessment.failed_subjects || 0;
+                student.risk_calculation_log =
+                  riskAssessment.calculation_log || [];
+                student.risk_missing_data_reasons =
+                  riskAssessment.missing_data_reasons || [];
+                student.risk_ai_meta = riskAssessment.ai_meta || {
+                  provider: "none",
+                  model: null,
+                  status: "not-used",
+                };
                 student.last_updated = new Date();
 
                 await student.save();
@@ -920,6 +1055,14 @@ async function processFeesUpload(req, res, next) {
             student.risk_factors = [];
             student.explanation = [];
             student.recommendations = [];
+            student.failed_subjects = 0;
+            student.risk_calculation_log = [];
+            student.risk_missing_data_reasons = [];
+            student.risk_ai_meta = {
+              provider: "none",
+              model: null,
+              status: "not-calculated",
+            };
             await student.save();
 
             console.log(
@@ -958,65 +1101,26 @@ async function calculateAndUpdateRisk(student) {
   try {
     const data = student.toObject();
 
-    // Rule-based risk calculation
-    const baseRisk = await riskCalculator.calculateRisk(data);
+    const riskAssessment = await riskCalculator.calculateRisk(data);
 
-    // Get current config for pass criteria
-    let config = await Config.findOne();
-    if (!config) {
-      config = new Config();
-      await config.save();
-    }
-
-    // Prepare ML features
-    const mlFeatures = {
-      attendance_rate: data.attendance_rate || 0,
-      avg_grade:
-        data.grades && data.grades.length
-          ? data.grades.reduce((sum, g) => sum + g.score, 0) /
-            data.grades.length
-          : 0,
-      failing_count: data.grades
-        ? data.grades.filter((g) => g.score < (config.passCriteria || 60))
-            .length
-        : 0,
-      days_overdue: data.days_overdue || 0,
-      attempts: 0,
+    // Update student with deterministic risk data
+    student.risk_level = riskAssessment.risk_level;
+    student.risk_score = riskAssessment.risk_score;
+    student.risk_factors = riskAssessment.risk_factors;
+    student.explanation = riskAssessment.explanation;
+    student.recommendations = riskAssessment.recommendations;
+    student.failed_subjects = riskAssessment.failed_subjects || 0;
+    student.risk_calculation_log = riskAssessment.calculation_log || [];
+    student.risk_missing_data_reasons =
+      riskAssessment.missing_data_reasons || [];
+    student.risk_ai_meta = riskAssessment.ai_meta || {
+      provider: "none",
+      model: null,
+      status: "not-used",
     };
-
-    // ML risk prediction
-    let mlResult = { risk_level: "low", risk_score: 0 };
-    try {
-      mlResult = await predictRisk(mlFeatures);
-    } catch (error) {
-      console.error(
-        `ML prediction failed for ${data.student_id}:`,
-        error.message,
-      );
-      mlResult = {
-        risk_level: baseRisk.risk_level,
-        risk_score: baseRisk.score,
-      };
-    }
-
-    // Combine ML and rule-based results
-    const finalRisk = {
-      risk_level: mlResult.risk_level || baseRisk.risk_level,
-      risk_score: mlResult.risk_score || baseRisk.score,
-      risk_factors: baseRisk.risk_factors,
-      explanation: baseRisk.explanation,
-      recommendations: baseRisk.recommendations,
-    };
-
-    // Update student with new risk data
-    student.risk_level = finalRisk.risk_level;
-    student.risk_score = finalRisk.risk_score;
-    student.risk_factors = finalRisk.risk_factors;
-    student.explanation = finalRisk.explanation;
-    student.recommendations = finalRisk.recommendations;
 
     console.log(
-      `Updated risk for ${data.student_id}: ${finalRisk.risk_level} (${finalRisk.risk_score})`,
+      `Updated risk for ${data.student_id}: ${riskAssessment.risk_level} (${riskAssessment.risk_score})`,
     );
   } catch (error) {
     console.error(`Error calculating risk for ${student.student_id}:`, error);
@@ -1192,55 +1296,28 @@ async function processFullDataUpload(req, res, next) {
         major,
       };
 
-      // Rule-based risk calculation
-      const baseRisk = await riskCalculator.calculateRisk(data);
+      const riskAssessment = await riskCalculator.calculateRisk(data);
 
-      // Prepare ML features
-      const mlFeatures = {
-        attendance_rate: data.attendance_rate,
-        avg_grade: data.grades.length
-          ? data.grades.reduce((sum, g) => sum + g.score, 0) /
-            data.grades.length
-          : 0,
-        failing_count: baseRisk.risk_factors.includes("multiple_failures")
-          ? data.grades.filter((g) => g.status === "failing").length
-          : 0,
-        days_overdue: data.days_overdue,
-        attempts: 0, // Attempts removed from system
-      };
-
-      // ML risk prediction
-      let mlResult = { risk_level: "low", risk_score: 0 };
-      try {
-        console.log(
-          `Calling ML service for ${data.student_id} with features:`,
-          mlFeatures,
-        );
-        mlResult = await predictRisk(mlFeatures);
-        console.log(`ML prediction for ${data.student_id}:`, mlResult);
-      } catch (error) {
-        console.error(
-          `ML prediction failed for ${data.student_id}:`,
-          error.message,
-        );
-        console.error(`ML prediction error details:`, error);
-        // Use rule-based as fallback
-        mlResult = {
-          risk_level: baseRisk.risk_level,
-          risk_score: baseRisk.score,
-        };
-      }
-
-      // Combine ML and rule-based results intelligently
       const finalRisk = {
-        risk_level: mlResult.risk_level || baseRisk.risk_level,
-        risk_score: mlResult.risk_score || baseRisk.score,
-        risk_factors: baseRisk.risk_factors,
-        explanation: baseRisk.explanation,
-        recommendations: baseRisk.recommendations,
+        risk_level: riskAssessment.risk_level,
+        risk_score: riskAssessment.risk_score,
+        risk_factors: riskAssessment.risk_factors,
+        explanation: riskAssessment.explanation,
+        recommendations: riskAssessment.recommendations,
+        failed_subjects: riskAssessment.failed_subjects || 0,
+        risk_calculation_log: riskAssessment.calculation_log || [],
+        risk_missing_data_reasons: riskAssessment.missing_data_reasons || [],
+        risk_ai_meta: riskAssessment.ai_meta || {
+          provider: "none",
+          model: null,
+          status: "not-used",
+        },
       };
 
-      console.log(`Final risk for ${data.student_id}:`, finalRisk);
+      console.log(
+        `Final deterministic risk for ${data.student_id}:`,
+        finalRisk,
+      );
 
       // Save or update student
       const saved = await Student.findOneAndUpdate(
@@ -1267,6 +1344,14 @@ async function processFullDataUpload(req, res, next) {
   } catch (error) {
     next(error);
   }
+}
+
+// Helper function to detect absent markers in uploaded cells
+function isAbsentValue(value) {
+  if (value === null || value === undefined) return false;
+
+  const normalized = value.toString().trim().toLowerCase();
+  return ["ab", "abs", "absent", "a", "na", "n/a", "-"].includes(normalized);
 }
 
 // Helper function to extract detailed grades for exam data
@@ -1297,8 +1382,9 @@ function extractDetailedGrades(row, examType) {
       continue;
     }
 
-    // Try to parse as a number
-    const score = parseFloat(value);
+    // Treat explicit absent markers as 0 so they are included as failing.
+    const isAbsent = isAbsentValue(value);
+    const score = isAbsent ? 0 : parseFloat(value);
     if (!isNaN(score) && score >= 0 && score <= 100) {
       const grade = {
         subject: key,
@@ -1365,21 +1451,30 @@ function extractGrades(row, passCriteria = 60) {
       return false;
     }
 
-    // Check if the value is a number (indicating it's a grade)
-    const value = parseFloat(row[key] || 0);
+    // Accept numeric grades and explicit absent markers.
+    const rawValue = row[key];
+    if (isAbsentValue(rawValue)) {
+      return true;
+    }
+
+    const value = parseFloat(rawValue);
     return !isNaN(value) && value >= 0 && value <= 100;
   });
 
   const grades = gradeColumns
     .map((subject) => {
-      const score = parseFloat(row[subject] || 0);
-      return score > 0
-        ? {
-            subject: subject,
-            score,
-            status: score >= passCriteria ? "passing" : "failing",
-          }
-        : null;
+      const rawValue = row[subject];
+      const score = isAbsentValue(rawValue) ? 0 : parseFloat(rawValue || 0);
+
+      if (isNaN(score) || score < 0 || score > 100) {
+        return null;
+      }
+
+      return {
+        subject: subject,
+        score,
+        status: score >= passCriteria ? "passing" : "failing",
+      };
     })
     .filter(Boolean);
 
@@ -1409,6 +1504,11 @@ function parseAttendanceRate(value) {
   if (!value) return 0;
 
   const str = value.toString().trim();
+
+  // Treat absent markers as 0% attendance.
+  if (isAbsentValue(str)) {
+    return 0;
+  }
 
   // If it contains % symbol, it's a percentage
   if (str.includes("%")) {
@@ -1454,6 +1554,58 @@ function normalizeFeeStatus(status) {
   };
 
   return statusMap[normalized] || "current";
+}
+
+function parseDueDateValue(value) {
+  if (value === null || value === undefined || value === "") {
+    return { text: "", daysOverdue: 0 };
+  }
+
+  const today = new Date();
+  let parsedDate = null;
+
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    parsedDate = value;
+  } else if (typeof value === "number" && Number.isFinite(value)) {
+    // Excel stores dates as serial day numbers in many sheets.
+    const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+    parsedDate = new Date(excelEpoch.getTime() + value * 24 * 60 * 60 * 1000);
+  } else {
+    const text = value.toString().trim();
+    const slashMatch = text.match(/^(\d{1,2})[\/](\d{1,2})[\/](\d{4})$/);
+    const dashMatch = text.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+    const isoMatch = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+
+    if (slashMatch) {
+      const [, day, month, year] = slashMatch;
+      parsedDate = new Date(Number(year), Number(month) - 1, Number(day));
+    } else if (dashMatch) {
+      const [, day, month, year] = dashMatch;
+      parsedDate = new Date(Number(year), Number(month) - 1, Number(day));
+    } else if (isoMatch) {
+      const [, year, month, day] = isoMatch;
+      parsedDate = new Date(Number(year), Number(month) - 1, Number(day));
+    } else {
+      const candidate = new Date(text);
+      if (!Number.isNaN(candidate.getTime())) {
+        parsedDate = candidate;
+      }
+    }
+  }
+
+  if (!parsedDate || Number.isNaN(parsedDate.getTime())) {
+    return { text: value.toString().trim(), daysOverdue: 0 };
+  }
+
+  parsedDate.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+
+  const diffTime = today - parsedDate;
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return {
+    text: value.toString().trim(),
+    daysOverdue: Number.isFinite(diffDays) ? Math.max(0, diffDays) : 0,
+  };
 }
 
 /**

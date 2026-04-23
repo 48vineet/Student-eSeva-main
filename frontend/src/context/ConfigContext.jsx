@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState } from "react";
 import { api } from "../api/api";
 
 const ConfigContext = createContext();
@@ -7,9 +7,11 @@ export function ConfigProvider({ children }) {
   const [config, setConfig] = useState({
     attendanceCritical: 75,
     attendanceWarning: 85,
+    passCriteria: 60,
     failingHigh: 2,
     failingMedium: 1,
     overdueDays: 30,
+    collegeFees: 0,
     maxAttempts: 3,
     institutionName: "Student eSeva Institution",
     academicYear: new Date().getFullYear().toString(),
@@ -20,7 +22,7 @@ export function ConfigProvider({ children }) {
     academicWeight: 0.4,
     financialWeight: 0.2,
     lastUpdated: new Date(),
-    updatedBy: "system"
+    updatedBy: "system",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -30,12 +32,16 @@ export function ConfigProvider({ children }) {
       setLoading(true);
       setError(null);
       const response = await api.getConfig();
-      setConfig(response.config);
+      setConfig(response?.data?.config || response?.config || config);
     } catch (err) {
       // Handle CORS and network errors gracefully
-      if (err.message.includes('CORS') || err.message.includes('Network Error') || err.message.includes('Failed to fetch')) {
-        console.warn('Config API not available, using default configuration');
-        setError('Config service unavailable, using default settings');
+      if (
+        err.message.includes("CORS") ||
+        err.message.includes("Network Error") ||
+        err.message.includes("Failed to fetch")
+      ) {
+        console.warn("Config API not available, using default configuration");
+        setError("Config service unavailable, using default settings");
       } else {
         setError(err.message);
       }
@@ -48,7 +54,7 @@ export function ConfigProvider({ children }) {
     try {
       setLoading(true);
       const response = await api.updateConfig(newConfig);
-      setConfig(response.config);
+      setConfig(response?.data?.config || response?.config || config);
       return response;
     } catch (err) {
       setError(err.message);
@@ -62,7 +68,7 @@ export function ConfigProvider({ children }) {
     try {
       setLoading(true);
       const response = await api.resetConfig();
-      setConfig(response.config);
+      setConfig(response?.data?.config || response?.config || config);
       return response;
     } catch (err) {
       setError(err.message);

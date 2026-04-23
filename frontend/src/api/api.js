@@ -16,13 +16,13 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     // Get token from localStorage
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 // Response interceptor
@@ -33,19 +33,19 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       console.log("Token expired, redirecting to login...");
       // Clear the token from localStorage
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
       // Redirect to login page
-      window.location.href = '/login';
+      window.location.href = "/login";
       return Promise.reject(error);
     }
-    
+
     // Don't log 403 errors as they're handled gracefully in components
     if (error.response?.status !== 403) {
       console.error("API Error:", error.response?.data || error.message);
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 // API methods matching your backend routes
@@ -55,13 +55,16 @@ export const api = {
     apiClient.post("/api/upload/exam-data", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
-    
 
   // Students - GET /api/students
   getStudents: (params = {}) => apiClient.get("/api/students", { params }),
 
   // Student by ID - GET /api/students/:studentId
   getStudentById: (studentId) => apiClient.get(`/api/students/${studentId}`),
+
+  // One-page AI summary - GET /api/students/:studentId/ai-summary
+  getStudentAiSummary: (studentId) =>
+    apiClient.get(`/api/students/${studentId}/ai-summary`),
 
   // Dashboard summary - GET /api/students/dashboard/summary
   getDashboardSummary: () => apiClient.get("/api/students/dashboard/summary"),
@@ -71,27 +74,39 @@ export const api = {
     apiClient.post(`/api/students/${studentId}/recalculate`),
 
   // Data deletion endpoints
-  deleteExamData: (studentId) => apiClient.delete(`/api/students/${studentId}/exam-data`),
-  deleteAttendanceData: (studentId) => apiClient.delete(`/api/students/${studentId}/attendance-data`),
-  deleteFeesData: (studentId) => apiClient.delete(`/api/students/${studentId}/fees-data`),
-  
+  deleteExamData: (studentId) =>
+    apiClient.delete(`/api/students/${studentId}/exam-data`),
+  deleteAttendanceData: (studentId) =>
+    apiClient.delete(`/api/students/${studentId}/attendance-data`),
+  deleteFeesData: (studentId) =>
+    apiClient.delete(`/api/students/${studentId}/fees-data`),
+
   // Complete student record deletion (counselor only)
-  deleteStudentRecord: (studentId) => apiClient.delete(`/api/students/${studentId}`),
-  
+  deleteStudentRecord: (studentId) =>
+    apiClient.delete(`/api/students/${studentId}`),
+
   // Delete ALL student records (counselor only)
-  deleteAllStudentRecords: () => apiClient.delete('/api/students'),
-  
+  deleteAllStudentRecords: () => apiClient.delete("/api/students"),
+
   // Cleanup duplicate students (counselor only)
-  cleanupDuplicateStudents: () => apiClient.post('/api/students/cleanup-duplicates'),
+  cleanupDuplicateStudents: () =>
+    apiClient.post("/api/students/cleanup-duplicates"),
 
   // Parent-specific API calls
-  getStudentActions: (studentId) => apiClient.get(`/api/students/${studentId}/actions`),
-  updateAction: (actionId, data) => apiClient.put(`/api/actions/${actionId}`, data),
+  getStudentActions: (studentId) =>
+    apiClient.get(`/api/students/${studentId}/actions`),
+  updateAction: (actionId, data) =>
+    apiClient.put(`/api/actions/${actionId}`, data),
 
   // Send notifications - POST /api/notifications
-  sendNotifications: () => apiClient.post("/api/notifications", {}, {
-    timeout: 30000, // 30 seconds timeout for email sending
-  }),
+  sendNotifications: () =>
+    apiClient.post(
+      "/api/notifications",
+      {},
+      {
+        timeout: 30000, // 30 seconds timeout for email sending
+      },
+    ),
 
   // Get config - GET /api/config
   getConfig: () => apiClient.get("/api/config"),
@@ -104,13 +119,17 @@ export const api = {
 
   // Health check
   healthCheck: () => apiClient.get("/health"),
-  
+
   // Email Alert API calls
   sendEmailAlert: (data) => apiClient.post("/api/email-alerts/send", data),
-  getMyEmailAlerts: (params) => apiClient.get("/api/email-alerts/my-alerts", { params }),
-  getStudentEmailAlerts: (studentId, params) => apiClient.get(`/api/email-alerts/student/${studentId}`, { params }),
-  getEligibleStudents: (params) => apiClient.get("/api/email-alerts/eligible-students", { params }),
-  updateAlertStatus: (alertId, data) => apiClient.put(`/api/email-alerts/${alertId}/status`, data),
+  getMyEmailAlerts: (params) =>
+    apiClient.get("/api/email-alerts/my-alerts", { params }),
+  getStudentEmailAlerts: (studentId, params) =>
+    apiClient.get(`/api/email-alerts/student/${studentId}`, { params }),
+  getEligibleStudents: (params) =>
+    apiClient.get("/api/email-alerts/eligible-students", { params }),
+  updateAlertStatus: (alertId, data) =>
+    apiClient.put(`/api/email-alerts/${alertId}/status`, data),
   getAlertStatistics: () => apiClient.get("/api/email-alerts/statistics"),
 };
 

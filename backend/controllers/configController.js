@@ -8,15 +8,15 @@ const riskCalculator = require("../services/riskCalculator");
 async function getConfig(req, res) {
   try {
     let config = await Config.findOne();
-    
+
     // If no config exists, create default one
     if (!config) {
       config = new Config();
       await config.save();
     }
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       config: {
         attendanceCritical: config.attendanceCritical,
         attendanceWarning: config.attendanceWarning,
@@ -24,6 +24,7 @@ async function getConfig(req, res) {
         failingHigh: config.failingHigh,
         failingMedium: config.failingMedium,
         overdueDays: config.overdueDays,
+        collegeFees: config.collegeFees,
         institutionName: config.institutionName,
         academicYear: config.academicYear,
         semester: config.semester,
@@ -38,14 +39,14 @@ async function getConfig(req, res) {
         academicWeight: config.academicWeight,
         financialWeight: config.financialWeight,
         lastUpdated: config.lastUpdated,
-        updatedBy: config.updatedBy
-      }
+        updatedBy: config.updatedBy,
+      },
     });
   } catch (error) {
     console.error("Error fetching config:", error);
-    res.status(500).json({ 
-      success: false, 
-      error: "Failed to fetch configuration" 
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch configuration",
     });
   }
 }
@@ -56,46 +57,63 @@ async function getConfig(req, res) {
 async function updateConfig(req, res) {
   try {
     const updates = req.body;
-    
+
     // Validate the updates
     const allowedFields = [
-      'attendanceCritical', 'attendanceWarning', 'passCriteria', 'failingHigh', 'failingMedium',
-      'overdueDays', 'institutionName', 'academicYear', 'semester',
-      'emailNotifications', 'smsNotifications', 'emailStudentRiskLevels', 'emailParentRiskLevels',
-      'emailFrequency', 'includeDetailedGrades', 'includeRecommendations',
-      'attendanceWeight', 'academicWeight', 'financialWeight'
+      "attendanceCritical",
+      "attendanceWarning",
+      "passCriteria",
+      "failingHigh",
+      "failingMedium",
+      "overdueDays",
+      "collegeFees",
+      "institutionName",
+      "academicYear",
+      "semester",
+      "emailNotifications",
+      "smsNotifications",
+      "emailStudentRiskLevels",
+      "emailParentRiskLevels",
+      "emailFrequency",
+      "includeDetailedGrades",
+      "includeRecommendations",
+      "attendanceWeight",
+      "academicWeight",
+      "financialWeight",
     ];
-    
+
     const filteredUpdates = {};
-    Object.keys(updates).forEach(key => {
+    Object.keys(updates).forEach((key) => {
       if (allowedFields.includes(key)) {
         filteredUpdates[key] = updates[key];
       }
     });
-    
+
     // Add metadata
     filteredUpdates.lastUpdated = new Date();
     filteredUpdates.updatedBy = req.body.updatedBy || "admin";
-    
+
     // Use upsert to create if doesn't exist, update if exists
     const config = await Config.findOneAndUpdate(
       {}, // Empty filter to match any document
       filteredUpdates,
-      { 
-        upsert: true, 
-        new: true, 
-        runValidators: true 
-      }
+      {
+        upsert: true,
+        new: true,
+        runValidators: true,
+      },
     );
 
     // Recalculate risk for all students with complete data when settings change
     if (Object.keys(filteredUpdates).length > 0) {
-      console.log('🔄 Settings changed, recalculating risk for all students...');
+      console.log(
+        "🔄 Settings changed, recalculating risk for all students...",
+      );
       await recalculateAllStudentRisks();
     }
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       message: "Configuration updated successfully",
       config: {
         attendanceCritical: config.attendanceCritical,
@@ -104,6 +122,7 @@ async function updateConfig(req, res) {
         failingHigh: config.failingHigh,
         failingMedium: config.failingMedium,
         overdueDays: config.overdueDays,
+        collegeFees: config.collegeFees,
         institutionName: config.institutionName,
         academicYear: config.academicYear,
         semester: config.semester,
@@ -118,15 +137,15 @@ async function updateConfig(req, res) {
         academicWeight: config.academicWeight,
         financialWeight: config.financialWeight,
         lastUpdated: config.lastUpdated,
-        updatedBy: config.updatedBy
-      }
+        updatedBy: config.updatedBy,
+      },
     });
   } catch (error) {
     console.error("Error updating config:", error);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       error: "Failed to update configuration",
-      details: error.message
+      details: error.message,
     });
   }
 }
@@ -137,12 +156,12 @@ async function updateConfig(req, res) {
 async function resetConfig(req, res) {
   try {
     await Config.deleteMany({});
-    
+
     const defaultConfig = new Config();
     await defaultConfig.save();
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       message: "Configuration reset to defaults",
       config: {
         attendanceCritical: defaultConfig.attendanceCritical,
@@ -151,6 +170,7 @@ async function resetConfig(req, res) {
         failingHigh: defaultConfig.failingHigh,
         failingMedium: defaultConfig.failingMedium,
         overdueDays: defaultConfig.overdueDays,
+        collegeFees: defaultConfig.collegeFees,
         maxAttempts: defaultConfig.maxAttempts,
         institutionName: defaultConfig.institutionName,
         academicYear: defaultConfig.academicYear,
@@ -161,14 +181,14 @@ async function resetConfig(req, res) {
         academicWeight: defaultConfig.academicWeight,
         financialWeight: defaultConfig.financialWeight,
         lastUpdated: defaultConfig.lastUpdated,
-        updatedBy: defaultConfig.updatedBy
-      }
+        updatedBy: defaultConfig.updatedBy,
+      },
     });
   } catch (error) {
     console.error("Error resetting config:", error);
-    res.status(500).json({ 
-      success: false, 
-      error: "Failed to reset configuration" 
+    res.status(500).json({
+      success: false,
+      error: "Failed to reset configuration",
     });
   }
 }
@@ -178,22 +198,28 @@ async function resetConfig(req, res) {
  */
 async function recalculateAllStudentRisks() {
   try {
-    console.log('🔄 Starting risk recalculation for all students...');
-    
+    console.log("🔄 Starting risk recalculation for all students...");
+
     // Find all students with complete data
     const students = await Student.find({ data_complete: true });
-    console.log(`Found ${students.length} students with complete data to recalculate`);
-    
+    console.log(
+      `Found ${students.length} students with complete data to recalculate`,
+    );
+
     let successCount = 0;
     let errorCount = 0;
-    
+
     for (const student of students) {
       try {
-        console.log(`🔄 Recalculating risk for ${student.student_id} (${student.name})`);
-        
+        console.log(
+          `🔄 Recalculating risk for ${student.student_id} (${student.name})`,
+        );
+
         // Calculate new risk using updated settings
-        const riskAssessment = await riskCalculator.calculateRisk(student.toObject());
-        
+        const riskAssessment = await riskCalculator.calculateRisk(
+          student.toObject(),
+        );
+
         if (riskAssessment) {
           // Update student with new risk data
           student.risk_level = riskAssessment.risk_level;
@@ -201,23 +227,38 @@ async function recalculateAllStudentRisks() {
           student.risk_factors = riskAssessment.risk_factors;
           student.explanation = riskAssessment.explanation;
           student.recommendations = riskAssessment.recommendations;
+          student.failed_subjects = riskAssessment.failed_subjects || 0;
+          student.risk_calculation_log = riskAssessment.calculation_log || [];
+          student.risk_missing_data_reasons =
+            riskAssessment.missing_data_reasons || [];
+          student.risk_ai_meta = riskAssessment.ai_meta || {
+            provider: "none",
+            model: null,
+            status: "not-used",
+          };
           student.last_updated = new Date();
-          
+
           await student.save();
           successCount++;
-          
-          console.log(`✅ Updated risk for ${student.student_id}: ${riskAssessment.risk_level} (${riskAssessment.risk_score})`);
+
+          console.log(
+            `✅ Updated risk for ${student.student_id}: ${riskAssessment.risk_level} (${riskAssessment.risk_score})`,
+          );
         }
       } catch (error) {
-        console.error(`❌ Failed to recalculate risk for ${student.student_id}:`, error.message);
+        console.error(
+          `❌ Failed to recalculate risk for ${student.student_id}:`,
+          error.message,
+        );
         errorCount++;
       }
     }
-    
-    console.log(`🔄 Risk recalculation completed: ${successCount} successful, ${errorCount} errors`);
-    
+
+    console.log(
+      `🔄 Risk recalculation completed: ${successCount} successful, ${errorCount} errors`,
+    );
   } catch (error) {
-    console.error('❌ Error in recalculateAllStudentRisks:', error);
+    console.error("❌ Error in recalculateAllStudentRisks:", error);
   }
 }
 
